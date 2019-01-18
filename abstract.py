@@ -18,7 +18,8 @@ class FileSystemInterface:
 
         An address is any object that uniquely identifies the image it is referencing.
         It should be treated by the calling environment as an opaque object.
-        However, it must implement a __repr__() method that recreates that object precisely.
+        However, it must implement a __repr__() method that recreates that object.
+        It must also be hashable, and the hash of an object from here must equal the hash of the repr-object.
         """
 
     @abstractmethod

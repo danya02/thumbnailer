@@ -17,10 +17,11 @@ class LocalFilesystem(abstract.FileSystemInterface):
         outp = []
         for i in os.walk(self.base_path):
             for j in i[2]:
-                path = i[0] + j
+                path = i[0] + os.path.sep + j
                 for e in self.picture_endings:
                     if path.endswith(e):
                         outp += [path]
+        return outp
 
     def get_image(self, name, for_thumbnail=False) -> Optional[pygame.Surface]:
         if for_thumbnail:
