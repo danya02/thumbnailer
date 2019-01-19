@@ -6,7 +6,18 @@ import filesystem
 import abstract
 
 
+import activity_manager
+
+
 class ThumbnailView(abstract.GUIActivity):
+
+    @property
+    def activity_manager(self):
+        return self._activity_manager
+
+    @activity_manager.setter
+    def activity_manager(self, value):
+        self._activity_manager = value
 
     @property
     def surface_lock(self):
@@ -51,7 +62,9 @@ class ThumbnailView(abstract.GUIActivity):
         self.load_thumbs()
 
     def respond_to_event(self, event: pygame.event.Event):
-        pass
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            self.activity_manager.start_other_activity(activity_manager.TestActivity())
+
 
     def stop(self):
         self.running = False

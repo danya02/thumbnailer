@@ -87,3 +87,11 @@ class GUIActivity:
         A lock for the surface.
         If it is released, it is OK to show this surface to the user.
         """
+
+    @property
+    @abstractmethod
+    def activity_manager(self):
+        """
+        The activity manager this activity is linked to.
+        This must be set before start() is called.
+        """
