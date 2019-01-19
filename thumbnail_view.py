@@ -9,6 +9,19 @@ import abstract
 class ThumbnailView(abstract.GUIActivity):
 
     @property
+    def surface_lock(self):
+        return self._surface_lock
+
+    @property
+    def surface(self):
+        return self._surface
+
+    @surface.setter
+    def surface(self, value):
+        self._surface = value
+
+
+    @property
     def running(self):
         return self._running
 
@@ -19,7 +32,8 @@ class ThumbnailView(abstract.GUIActivity):
     def __init__(self):
         super().__init__()
         self.running = False
-        self.display: pygame.Surface = None
+        self.surface: pygame.Surface = None
+        self.surface_lock = threading.Lock()
         self.draw_thread: threading.Thread = None
         self.max_size = pygame.Rect(0, 0, 100, 100)
         self.filesystem = filesystem.LocalFilesystem('/home/danya/Pictures')
@@ -30,11 +44,14 @@ class ThumbnailView(abstract.GUIActivity):
 
     def start(self, **data):
         self.running = True
-        self.display: pygame.Surface = pygame.display.set_mode((800, 600))
+        self.surface = pygame.Surface((800,600))
         self.generate_grid()
         self.draw_thread = threading.Thread(target=self.draw_loop, daemon=True)
         self.draw_thread.start()
         self.load_thumbs()
+
+    def respond_to_event(self, event: pygame.event.Event):
+        pass
 
     def stop(self):
         self.running = False
@@ -44,9 +61,9 @@ class ThumbnailView(abstract.GUIActivity):
 
     def generate_grid(self):
         self.grid = []
-        for y in range(0, self.display.get_height(), self.max_size.height):
+        for y in range(0, self.surface.get_height(), self.max_size.height):
             newlist = []
-            for x in range(0, self.display.get_width(), self.max_size.width):
+            for x in range(0, self.surface.get_width(), self.max_size.width):
                 rect = self.max_size.copy()
                 rect.x = x
                 rect.y = y
@@ -64,6 +81,7 @@ class ThumbnailView(abstract.GUIActivity):
                     if image:
                         image = self.thumbify(image)
                         self.thumbs[y][x] = image
+                        self.draw()
         except StopIteration:
             pass
 
@@ -73,17 +91,28 @@ class ThumbnailView(abstract.GUIActivity):
             self.clock.tick(24)
 
     def draw(self):
-        self.display.fill(pygame.Color('black'))
-        for line, imgline in zip(self.grid, self.thumbs):
-            for cell, img in zip(line, imgline):
-                if img:
-                    rect: pygame.Rect = img.get_rect()
-                    rect.center = cell.center
-                    self.display.blit(img, rect)
-                    pygame.display.update(rect)
+        with self.surface_lock:
+            self.surface.fill(pygame.Color('black'))
+            for line, imgline in zip(self.grid, self.thumbs):
+                    for cell, img in zip(line, imgline):
+                        if img:
+                            rect: pygame.Rect = img.get_rect()
+                            rect.center = cell.center
+                            self.surface.blit(img, rect)
+
+    @surface_lock.setter
+    def surface_lock(self, value):
+        self._surface_lock = value
 
 
 if __name__ == '__main__':
+    pygame.init()
     v = ThumbnailView()
     v.start()
-    input()
+    s = pygame.display.set_mode(v.surface.get_size())
+    c = pygame.time.Clock()
+    while 1:
+        with v.surface_lock:
+            s.blit(v.surface, (0,0))
+            pygame.display.flip()
+        c.tick(10)

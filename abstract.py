@@ -3,6 +3,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Optional
 
 import pygame
+import threading
 
 
 class FileSystemInterface:
@@ -46,7 +47,6 @@ class GUIActivity:
     def start(self, **data: dict):
         """
         Show the activity on the screen.
-        Set the window dimensions and start the draw/event loop.
         """
 
     @property
@@ -64,4 +64,25 @@ class GUIActivity:
         """
         Shut down all loops previously start()'ed.
         When this is done, self.running must be False.
+        """
+
+    @property
+    @abstractmethod
+    def surface(self) -> pygame.Surface:
+        """The surface on which the interface will be drawn."""
+
+    @abstractmethod
+    def respond_to_event(self, event: pygame.event.Event):
+        """
+        Do internal actions to react to an event.
+
+        This must return as fast as possible, or you risk missing too many frame updates.
+        """
+
+    @property
+    @abstractmethod
+    def surface_lock(self) -> threading.Lock:
+        """
+        A lock for the surface.
+        If it is released, it is OK to show this surface to the user.
         """
