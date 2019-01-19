@@ -17,6 +17,7 @@ class FileSystemInterface:
     def get_file_list(self) -> [object]:
         """
         Get a list of image file addresses.
+        This list must be consistently ordered between calls.
 
         An address is any object that uniquely identifies the image it is referencing.
         It should be treated by the calling environment as an opaque object.
