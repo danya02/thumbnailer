@@ -3,21 +3,41 @@ from typing import List
 import threading
 import pygame
 import filesystem
+import abstract
 
 
-class ThumbnailView:
+class ThumbnailView(abstract.GUIActivity):
+
+    @property
+    def running(self):
+        return self._running
+
+    @running.setter
+    def running(self, value):
+        self._running = value
+
     def __init__(self):
-        self.display: pygame.Surface = pygame.display.set_mode((800, 600))
+        super().__init__()
+        self.running = False
+        self.display: pygame.Surface = None
+        self.draw_thread: threading.Thread = None
         self.max_size = pygame.Rect(0, 0, 100, 100)
         self.filesystem = filesystem.LocalFilesystem('/home/danya/Pictures')
         self.thumbnails = {}
         self.grid: List[List[pygame.Rect]] = []
         self.thumbs: List[List[pygame.Surface]] = []
-        self.generate_grid()
         self.clock = pygame.time.Clock()
+
+    def start(self, **data):
+        self.running = True
+        self.display: pygame.Surface = pygame.display.set_mode((800, 600))
+        self.generate_grid()
         self.draw_thread = threading.Thread(target=self.draw_loop, daemon=True)
         self.draw_thread.start()
         self.load_thumbs()
+
+    def stop(self):
+        self.running = False
 
     def thumbify(self, image: pygame.Surface) -> pygame.Surface:
         return pygame.transform.scale(image, image.get_rect().fit(self.max_size).size)
@@ -48,7 +68,7 @@ class ThumbnailView:
             pass
 
     def draw_loop(self):
-        while True:
+        while self.running:
             self.draw()
             self.clock.tick(24)
 
@@ -65,5 +85,5 @@ class ThumbnailView:
 
 if __name__ == '__main__':
     v = ThumbnailView()
-    v.draw()
+    v.start()
     input()

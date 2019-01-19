@@ -1,7 +1,8 @@
 #!/usr/bin/python3
-import pygame
+from abc import ABCMeta, abstractmethod
 from typing import Optional
-from abc import ABCMeta, abstractmethod, abstractproperty
+
+import pygame
 
 
 class FileSystemInterface:
@@ -31,4 +32,36 @@ class FileSystemInterface:
 
         If an error occurs, this should throw an exception only if not for_thumbnail.
         If for_thumbnail, this should return None instead.
+        """
+
+
+class GUIActivity:
+    __metaclass__ = ABCMeta
+
+    def __init__(self):
+        """Any user-facing window."""
+        pass
+
+    @abstractmethod
+    def start(self, **data: dict):
+        """
+        Show the activity on the screen.
+        Set the window dimensions and start the draw/event loop.
+        """
+
+    @property
+    @abstractmethod
+    def running(self):
+        """
+        Is the event loop running?
+
+        If False, executing start() on another activity must be safe.
+        This means this object must not attempt to draw on the screen or listen for events.
+        """
+
+    @abstractmethod
+    def stop(self):
+        """
+        Shut down all loops previously start()'ed.
+        When this is done, self.running must be False.
         """
