@@ -57,14 +57,13 @@ class ThumbnailView(abstract.GUIActivity):
         self.running = True
         self.surface = pygame.Surface((800,600))
         self.generate_grid()
-        self.draw_thread = threading.Thread(target=self.draw_loop, daemon=True)
+        self.draw_thread = threading.Thread(name='ThumbnailView::DrawThread', target=self.draw_loop, daemon=True)
         self.draw_thread.start()
         self.load_thumbs()
 
     def respond_to_event(self, event: pygame.event.Event):
         if event.type == pygame.MOUSEBUTTONDOWN:
             self.activity_manager.start_other_activity(activity_manager.TestActivity(), color='red')
-
 
     def stop(self):
         self.running = False

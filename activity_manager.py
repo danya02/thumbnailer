@@ -92,8 +92,9 @@ class ActivityManager:
 
     def start_other_activity(self, other: abstract.GUIActivity, **data):
         self.new_activity = other
-        data.update({'calling_activity':self.current_activity})
-        threading.Thread(target=other.start, name='start_other_activity_thread', kwargs=data, daemon=True).start()
+        data.update({'calling_activity': self.current_activity})
+        threading.Thread(target=other.start, name='ActivityManager::StartOtherActivityThread', kwargs=data,
+                         daemon=True).start()
         self.switching_activity = True
 
 
@@ -115,16 +116,18 @@ class TestActivity(abstract.GUIActivity):
         self.surface = pygame.Surface((100, 100))
         self.surface.fill(pygame.Color('white'))
         self.surface_lock = threading.Lock()
+        self.caller = None
 
     def start(self, color=pygame.Color('white'), **data):
         self.surface.fill(pygame.Color(color))
+        self.caller = data['calling_activity']
 
     def stop(self):
         pass
 
     def respond_to_event(self, event: pygame.event.Event):
         if event.type == pygame.MOUSEBUTTONDOWN:
-            self.activity_manager.start_other_activity(thumbnail_view.ThumbnailView())
+            self.activity_manager.start_other_activity(self.caller)
 
     @surface.setter
     def surface(self, value):

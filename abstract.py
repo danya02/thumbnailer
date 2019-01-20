@@ -51,6 +51,8 @@ class GUIActivity:
 
         "data" is anything the calling activity would like this activity to know.
         One field will always exist: "calling_activity", the instance of this class that launched this.
+
+        This class must be able to be stop()'ed and start()'d multiple times.
         """
 
     @property
