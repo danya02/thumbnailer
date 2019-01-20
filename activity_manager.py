@@ -92,6 +92,7 @@ class ActivityManager:
 
     def start_other_activity(self, other: abstract.GUIActivity, **data):
         self.new_activity = other
+        data.update({'calling_activity':self.current_activity})
         threading.Thread(target=other.start, name='start_other_activity_thread', kwargs=data, daemon=True).start()
         self.switching_activity = True
 

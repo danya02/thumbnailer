@@ -48,6 +48,9 @@ class GUIActivity:
     def start(self, **data: dict):
         """
         Show the activity on the screen.
+
+        "data" is anything the calling activity would like this activity to know.
+        One field will always exist: "calling_activity", the instance of this class that launched this.
         """
 
     @property
@@ -78,6 +81,7 @@ class GUIActivity:
         Do internal actions to react to an event.
 
         This must return as fast as possible, or you risk missing too many frame updates.
+        This is not run if the activity is being switched out.
         """
 
     @property
