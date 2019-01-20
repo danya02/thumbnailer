@@ -13,11 +13,12 @@ class ActivityManager:
         self.current_activity: abstract.GUIActivity = None
         self.new_activity: abstract.GUIActivity = None
         self.running = True
+        self.draw_fps = True
         self.switching_activity = False
         self.switching_activity_phase = 0
         self.switching_activity_final_phase = 24
         self.display: pygame.Surface = pygame.display.set_mode((800, 600))
-        self.clock = pygame.time.Clock()
+        self.clock: pygame.time.Clock = pygame.time.Clock()
 
     @property
     def current_activity(self):
@@ -39,7 +40,7 @@ class ActivityManager:
                 self.switching_activity_phase = 0
                 with self.current_activity.surface_lock:
                     self.display.blit(self.current_activity.surface, (0, 0))
-                    pygame.display.flip()
+                    self.clock.tick(24)
             else:
                 self.switching_activity_phase += 1
                 if self.switching_activity_phase > self.switching_activity_final_phase:
@@ -61,28 +62,38 @@ class ActivityManager:
                     # as well as change size. This SHOULD look nicer, but, because the screen is set_mode()'d
                     # every tick, what happens is there's a lot of flashing through to black, which is a Bad Thing.
 
-#                    with self.current_activity.surface_lock:
-#                        first = self.current_activity.surface.copy()
-#                    with self.current_activity.surface_lock:
-#                        second = self.new_activity.surface.copy()
-#                    first.convert_alpha()
-#                    first.set_alpha(int(255 * (1 - flphase)))
-#                    second.convert_alpha()
-#                    second.set_alpha(int(255 * flphase))
+                    #                    with self.current_activity.surface_lock:
+                    #                        first = self.current_activity.surface.copy()
+                    #                    with self.current_activity.surface_lock:
+                    #                        second = self.new_activity.surface.copy()
+                    #                    first.convert_alpha()
+                    #                    first.set_alpha(int(255 * (1 - flphase)))
+                    #                    second.convert_alpha()
+                    #                    second.set_alpha(int(255 * flphase))
                     self.display = pygame.display.set_mode((x, y))
-#                    self.display.convert()
-#                    self.display.blit(first, (0, 0))
-#                    self.display.blit(second, (0, 0))
-                    pygame.display.flip()
+                    #                    self.display.convert()
+                    #                    self.display.blit(first, (0, 0))
+                    #                    self.display.blit(second, (0, 0))
+            if self.draw_fps:
+                font = pygame.font.SysFont(pygame.font.get_default_font(), 40)
+                fps = self.clock.get_fps()
+                color = 'white'
+                if fps < 30: color = 'green'
+                if fps < 20: color = 'yellow'
+                if fps < 10: color = 'red'
+                fps = str(fps)[:5].ljust(5, '0')
+                text = font.render(fps, False, pygame.Color(color))
+                self.display.blit(text, (0, 0))
+            pygame.display.flip()
 
             for event in pygame.event.get():
                 if not self.switching_activity:
                     self.current_activity.respond_to_event(event)
-    def start_other_activity(self, other:abstract.GUIActivity):
-        self.new_activity = other
-        threading.Thread(target=other.start, name='start_other_activity_thread', daemon=True).start()
-        self.switching_activity = True
 
+    def start_other_activity(self, other: abstract.GUIActivity, **data):
+        self.new_activity = other
+        threading.Thread(target=other.start, name='start_other_activity_thread', kwargs=data, daemon=True).start()
+        self.switching_activity = True
 
 
 class TestActivity(abstract.GUIActivity):
@@ -94,6 +105,7 @@ class TestActivity(abstract.GUIActivity):
     @property
     def surface_lock(self):
         return self._surface_lock
+
     @property
     def activity_manager(self):
         return self._am
@@ -103,8 +115,8 @@ class TestActivity(abstract.GUIActivity):
         self.surface.fill(pygame.Color('white'))
         self.surface_lock = threading.Lock()
 
-    def start(self, **data: dict):
-        pass
+    def start(self, color=pygame.Color('white'), **data):
+        self.surface.fill(pygame.Color(color))
 
     def stop(self):
         pass
@@ -120,12 +132,14 @@ class TestActivity(abstract.GUIActivity):
     @surface_lock.setter
     def surface_lock(self, value):
         self._surface_lock = value
+
     @activity_manager.setter
     def activity_manager(self, value):
         self._am = value
 
 
 if __name__ == '__main__':
+    pygame.init()
     am = ActivityManager()
     am.current_activity = thumbnail_view.ThumbnailView()
     threading.Thread(target=am.current_activity.start).start()

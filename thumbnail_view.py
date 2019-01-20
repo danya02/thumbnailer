@@ -63,7 +63,7 @@ class ThumbnailView(abstract.GUIActivity):
 
     def respond_to_event(self, event: pygame.event.Event):
         if event.type == pygame.MOUSEBUTTONDOWN:
-            self.activity_manager.start_other_activity(activity_manager.TestActivity())
+            self.activity_manager.start_other_activity(activity_manager.TestActivity(), color='red')
 
 
     def stop(self):
