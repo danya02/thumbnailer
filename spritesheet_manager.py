@@ -5,6 +5,8 @@ import pygame
 import json
 
 import abstract
+import logging
+l = logging.getLogger(__name__)
 
 # spritesheet_manager.py - Manager of spritesheets to store thumbnails.
 # Copyright (C) 2019 Danya Generalov (https://github.com/danya02)
@@ -28,13 +30,17 @@ class LazySpritesheetLoader:
         self.cache = dict()
 
     def __getitem__(self, item) -> pygame.Surface:
+        l.debug('Loading spritesheet %s...', item)
         if str(item) in self.cache:
+            l.debug('It was found in the cache.')
             return self.cache[str(item)]
         else:
+            l.debug()
             self.cache.update({str(item): pygame.image.load(f'spritesheets/{item}.png')})
             return self.cache[str(item)]
 
     def __setitem__(self, key, value: pygame.Surface):
+        l.debug('Saving spritesheet %s', key)
         pygame.image.save(value, f'spritesheets/{key}.png')
         self.cache[key] = value
 
@@ -58,11 +64,15 @@ class SpritesheetManager(metaclass=abstract.Singleton):
             self.data = dict()
 
     def get_thumbnail(self, name, size: (int, int)) -> pygame.Surface:
+
         xsep = 'x'.join([str(i) for i in size])
+        l.debug('Getting thumbnail of %s at %s', name, xsep)
         if repr(name) in self.cache.get(xsep, dict()):
+            l.debug('This file is in immediate cache.')
             return self.cache[xsep][repr(name)]
 
         def get_new():
+            l.debug('This image not in cache, hitting filesystem.')
             image = self.fs.get_image(name)
             image = pygame.transform.scale(image, image.get_rect().fit(pygame.Rect((0, 0), size)).size)
             fname = str(uuid.uuid4())
@@ -74,6 +84,7 @@ class SpritesheetManager(metaclass=abstract.Singleton):
 
         if xsep in self.data:
             if repr(name) in self.data[xsep]:
+                l.debug('This file exists in a spritesheet.')
                 item = self.data[xsep][repr(name)]
                 sheet = self.ssl[item['sheetname']]
                 area = pygame.Rect(item['area'])

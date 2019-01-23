@@ -6,6 +6,10 @@ import abstract
 import pygame
 
 import thumbnail_view
+import logging
+l = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
+
 
 # activity_manager.py - Presentation manager; controls activity switching and drawing.
 # Copyright (C) 2019 Danya Generalov (https://github.com/danya02)
@@ -58,10 +62,13 @@ class ActivityManager:
                 with self.current_activity.surface_lock:
                     if self.current_activity.surface:
                         self.display.blit(self.current_activity.surface, (0, 0))
+                    else:
+                        l.warning('Activity '+repr(self.current_activity)+' has not init\'ed its surface!')
                     self.clock.tick(24)
             else:
                 self.switching_activity_phase += 1
                 if self.switching_activity_phase > self.switching_activity_final_phase:
+                    l.debug('Switching animation complete.')
                     self.switching_activity = False
                     self.current_activity.stop()
                     self.current_activity = self.new_activity
@@ -109,6 +116,7 @@ class ActivityManager:
                     self.current_activity.respond_to_event(event)
 
     def start_other_activity(self, other: abstract.GUIActivity, **data):
+        l.info('Switching current activity to '+repr(other))
         self.new_activity = other
         data.update({'calling_activity': self.current_activity})
         threading.Thread(target=other.start, name='ActivityManager::StartOtherActivityThread', kwargs=data,

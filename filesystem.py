@@ -4,6 +4,9 @@ from typing import Optional
 import pygame
 import os
 import abstract
+import logging
+l = logging.getLogger(__name__)
+
 
 # filesystem.py - Abstraction for the local filesystem.
 # Copyright (C) 2019 Danya Generalov (https://github.com/danya02)
@@ -30,6 +33,7 @@ class LocalFilesystem(abstract.FileSystemInterface):
         self.picture_endings = ['.png', '.jpg', '.jpeg']  # TODO: add more image extensions.
 
     def get_file_list(self) -> [str]:
+        l.debug('File list get...')
         outp = []
         for i in os.walk(self.base_path):
             for j in i[2]:
@@ -40,6 +44,7 @@ class LocalFilesystem(abstract.FileSystemInterface):
         return outp
 
     def get_image(self, name, for_thumbnail=False) -> Optional[pygame.Surface]:
+        l.debug('Getting image at file %s...', name)
         if for_thumbnail:
             try:
                 return pygame.image.load(name)

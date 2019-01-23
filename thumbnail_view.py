@@ -8,6 +8,9 @@ import abstract
 
 import activity_manager
 import spritesheet_manager
+import logging
+l = logging.getLogger(__name__)
+
 
 # thumbnail_view.py - Activity to examine the thumbnail list.
 # Copyright (C) 2019 Danya Generalov (https://github.com/danya02)
