@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import threading
+import traceback
 
 import abstract
 import pygame
@@ -39,7 +40,8 @@ class ActivityManager:
             if not self.switching_activity:
                 self.switching_activity_phase = 0
                 with self.current_activity.surface_lock:
-                    self.display.blit(self.current_activity.surface, (0, 0))
+                    if self.current_activity.surface:
+                        self.display.blit(self.current_activity.surface, (0, 0))
                     self.clock.tick(24)
             else:
                 self.switching_activity_phase += 1

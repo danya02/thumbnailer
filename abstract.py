@@ -26,14 +26,10 @@ class FileSystemInterface:
         """
 
     @abstractmethod
-    def get_image(self, name, for_thumbnail=False) -> Optional[pygame.Surface]:
+    def get_image(self, name) -> Optional[pygame.Surface]:
         """
         Return a Pygame surface with the target image.
         The image is specified by the address object from get_file_list().
-        If for_thumbnail, the image may have a smaller size than the actual image.
-
-        If an error occurs, this should throw an exception only if not for_thumbnail.
-        If for_thumbnail, this should return None instead.
         """
 
 
@@ -101,3 +97,13 @@ class GUIActivity:
         The activity manager this activity is linked to.
         This must be set before start() is called.
         """
+
+
+# from https://stackoverflow.com/a/6798042/5936187
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]

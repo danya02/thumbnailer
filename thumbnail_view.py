@@ -7,6 +7,7 @@ import abstract
 
 
 import activity_manager
+import spritesheet_manager
 
 
 class ThumbnailView(abstract.GUIActivity):
@@ -52,6 +53,7 @@ class ThumbnailView(abstract.GUIActivity):
         self.grid: List[List[pygame.Rect]] = []
         self.thumbs: List[List[pygame.Surface]] = []
         self.clock = pygame.time.Clock()
+        self.spritesheet_manager = spritesheet_manager.SpritesheetManager('spritesheets/data.json', self.filesystem)
 
     def start(self, **data):
         self.running = True
@@ -67,9 +69,6 @@ class ThumbnailView(abstract.GUIActivity):
 
     def stop(self):
         self.running = False
-
-    def thumbify(self, image: pygame.Surface) -> pygame.Surface:
-        return pygame.transform.scale(image, image.get_rect().fit(self.max_size).size)
 
     def generate_grid(self):
         self.grid = []
@@ -89,11 +88,12 @@ class ThumbnailView(abstract.GUIActivity):
             for y in range(len(self.grid)):
                 for x in range(len(self.grid[0])):
                     file = next(files)
-                    image = self.filesystem.get_image(file, True)
+                    #try:
+                    image = self.spritesheet_manager.get_thumbnail(file, self.max_size.size)
                     if image:
-                        image = self.thumbify(image)
                         self.thumbs[y][x] = image
                         self.draw()
+                    #except:pass
         except StopIteration:
             pass
 
