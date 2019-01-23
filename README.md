@@ -1,6 +1,8 @@
 # thumbnailer
 Visual photo collection management.
 
+This project is sponsored by [Eurasia Press](https://oilandgaseurasia.com/).
+
 ## Legalese
 ```
 Copyright (C) 2019 Danya Generalov (https://github.com/danya02)
@@ -17,4 +19,4 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
-```
+```фильмы
