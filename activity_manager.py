@@ -7,6 +7,7 @@ import pygame
 
 import thumbnail_view
 import logging
+
 l = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
@@ -36,6 +37,9 @@ class ActivityManager:
         self.running = True
         self.draw_fps = True
         self.switching_activity = False
+        self.only_switching_size = False
+        self.switching_old_size: (int, int) = None
+        self.switching_new_size: (int, int) = None
         self.switching_activity_phase = 0
         self.switching_activity_final_phase = 24
         self.display: pygame.Surface = pygame.display.set_mode((800, 600))
@@ -63,22 +67,23 @@ class ActivityManager:
                     if self.current_activity.surface:
                         self.display.blit(self.current_activity.surface, (0, 0))
                     else:
-                        l.warning('Activity '+repr(self.current_activity)+' has not init\'ed its surface!')
+                        l.warning('Activity ' + repr(self.current_activity) + ' has not yet init\'ed its surface!')
                     self.clock.tick(24)
             else:
                 self.switching_activity_phase += 1
                 if self.switching_activity_phase > self.switching_activity_final_phase:
                     l.debug('Switching animation complete.')
                     self.switching_activity = False
-                    self.current_activity.stop()
-                    self.current_activity = self.new_activity
-                    self.new_activity = None
+                    if not self.only_switching_size:
+                        self.current_activity.stop()
+                        self.current_activity = self.new_activity
+                        self.new_activity = None
                 else:
                     self.clock.tick(45)
                     flphase = self.switching_activity_phase / self.switching_activity_final_phase
-                    x = self.lerp(self.current_activity.surface.get_width(), self.new_activity.surface.get_width(),
+                    x = self.lerp(self.switching_old_size[0], self.switching_new_size[0],
                                   flphase)
-                    y = self.lerp(self.current_activity.surface.get_height(), self.new_activity.surface.get_height(),
+                    y = self.lerp(self.switching_old_size[1], self.switching_new_size[1],
                                   flphase)
                     x = int(x)
                     y = int(y)
@@ -116,11 +121,22 @@ class ActivityManager:
                     self.current_activity.respond_to_event(event)
 
     def start_other_activity(self, other: abstract.GUIActivity, **data):
-        l.info('Switching current activity to '+repr(other))
+        l.info('Switching current activity to ' + repr(other))
         self.new_activity = other
+        self.only_switching_size = False
+        self.switching_old_size = self.current_activity.surface.get_size()
+        self.switching_new_size = self.new_activity.surface.get_size()
         data.update({'calling_activity': self.current_activity})
         threading.Thread(target=other.start, name='ActivityManager::StartOtherActivityThread', kwargs=data,
                          daemon=True).start()
+        self.switching_activity = True
+
+    def update_screen_size(self, size: (int, int)):
+        l.info('Current activity requested a screen size update,'
+               'launching switching animation without true activity switching.')
+        self.only_switching_size = True
+        self.switching_old_size = self.current_activity.surface.get_size()
+        self.switching_new_size = size
         self.switching_activity = True
 
 

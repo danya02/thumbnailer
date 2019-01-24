@@ -37,7 +37,7 @@ class LazySpritesheetLoader:
             l.debug('It was found in the cache.')
             return self.cache[str(item)]
         else:
-            l.debug()
+            l.debug('It was not found in the cache, loading from filesystem.')
             self.cache.update({str(item): pygame.image.load(f'spritesheets/{item}.png')})
             return self.cache[str(item)]
 
