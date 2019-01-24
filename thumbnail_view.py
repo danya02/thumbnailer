@@ -5,10 +5,10 @@ import pygame
 import filesystem
 import abstract
 
-
 import activity_manager
 import spritesheet_manager
 import logging
+
 l = logging.getLogger(__name__)
 
 
@@ -27,7 +27,6 @@ l = logging.getLogger(__name__)
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 
 
 class ThumbnailView(abstract.GUIActivity):
@@ -51,7 +50,6 @@ class ThumbnailView(abstract.GUIActivity):
     @surface.setter
     def surface(self, value):
         self._surface = value
-
 
     @property
     def running(self):
@@ -77,7 +75,7 @@ class ThumbnailView(abstract.GUIActivity):
 
     def start(self, **data):
         self.running = True
-        self.surface = pygame.Surface((800,600))
+        self.surface = pygame.Surface((800, 600))
         self.generate_grid()
         self.draw_thread = threading.Thread(name='ThumbnailView::DrawThread', target=self.draw_loop, daemon=True)
         self.draw_thread.start()
@@ -108,12 +106,12 @@ class ThumbnailView(abstract.GUIActivity):
             for y in range(len(self.grid)):
                 for x in range(len(self.grid[0])):
                     file = next(files)
-                    #try:
+                    # try:
                     image = self.spritesheet_manager.get_thumbnail(file, self.max_size.size)
                     if image:
                         self.thumbs[y][x] = image
                         self.draw()
-                    #except:pass
+                    # except:pass
         except StopIteration:
             pass
 
@@ -126,11 +124,11 @@ class ThumbnailView(abstract.GUIActivity):
         with self.surface_lock:
             self.surface.fill(pygame.Color('black'))
             for line, imgline in zip(self.grid, self.thumbs):
-                    for cell, img in zip(line, imgline):
-                        if img:
-                            rect: pygame.Rect = img.get_rect()
-                            rect.center = cell.center
-                            self.surface.blit(img, rect)
+                for cell, img in zip(line, imgline):
+                    if img:
+                        rect: pygame.Rect = img.get_rect()
+                        rect.center = cell.center
+                        self.surface.blit(img, rect)
 
     @surface_lock.setter
     def surface_lock(self, value):
@@ -145,6 +143,6 @@ if __name__ == '__main__':
     c = pygame.time.Clock()
     while 1:
         with v.surface_lock:
-            s.blit(v.surface, (0,0))
+            s.blit(v.surface, (0, 0))
             pygame.display.flip()
         c.tick(10)

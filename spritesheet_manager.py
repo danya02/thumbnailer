@@ -6,7 +6,9 @@ import json
 
 import abstract
 import logging
+
 l = logging.getLogger(__name__)
+
 
 # spritesheet_manager.py - Manager of spritesheets to store thumbnails.
 # Copyright (C) 2019 Danya Generalov (https://github.com/danya02)
@@ -57,14 +59,18 @@ class SpritesheetManager(metaclass=abstract.Singleton):
         self.fs = fs
         self.ssl = LazySpritesheetLoader()
         self.cache = {}
+        self.datapath = file
         try:
             with open(file) as o:
                 self.data = json.load(o)
         except FileNotFoundError:
             self.data = dict()
 
-    def get_thumbnail(self, name, size: (int, int)) -> pygame.Surface:
+    def save_data(self):
+        with open(self.datapath, 'w') as o:
+            json.dump(self.data, o)
 
+    def get_thumbnail(self, name, size: (int, int)) -> pygame.Surface:
         xsep = 'x'.join([str(i) for i in size])
         l.debug('Getting thumbnail of %s at %s', name, xsep)
         if repr(name) in self.cache.get(xsep, dict()):
@@ -92,6 +98,7 @@ class SpritesheetManager(metaclass=abstract.Singleton):
                 new = self.cache.get(xsep, dict())
                 new.update({repr(name): thumb})
                 self.cache[xsep] = new
+                self.save_data()
                 return thumb
             else:
                 return get_new()
