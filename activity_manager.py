@@ -80,6 +80,8 @@ class ActivityManager:
                         self.new_activity = None
                 else:
                     self.clock.tick(45)
+                    if self.switching_new_size==self.switching_old_size:
+                        self.switching_activity_phase = self.switching_activity_final_phase
                     flphase = self.switching_activity_phase / self.switching_activity_final_phase
                     x = self.lerp(self.switching_old_size[0], self.switching_new_size[0],
                                   flphase)

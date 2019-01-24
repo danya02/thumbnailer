@@ -6,6 +6,7 @@ import filesystem
 import abstract
 
 import activity_manager
+import image_view
 import spritesheet_manager
 import logging
 
@@ -66,10 +67,11 @@ class ThumbnailView(abstract.GUIActivity):
         self.surface_lock = threading.Lock()
         self.draw_thread: threading.Thread = None
         self.max_size = pygame.Rect(0, 0, 100, 100)
-        self.filesystem = filesystem.LocalFilesystem('/home/danya/Pictures')
+        self.filesystem = filesystem.LocalFilesystem('/home/danya/Pictures', 3)
         self.thumbnails = {}
         self.grid: List[List[pygame.Rect]] = []
         self.thumbs: List[List[pygame.Surface]] = []
+        self.filegrid: List[List[object]] = []
         self.clock = pygame.time.Clock()
         self.spritesheet_manager = spritesheet_manager.SpritesheetManager('spritesheets/data.json', self.filesystem)
 
@@ -83,22 +85,12 @@ class ThumbnailView(abstract.GUIActivity):
 
     def respond_to_event(self, event: pygame.event.Event):
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if self.max_size.size == (100, 100):
-                self.max_size.size = (200, 200)
-            else:
-                self.max_size.size = (100, 100)
-            if self.surface.get_size() == (800, 600):
-                new = (1600, 1200)
-            else:
-                new = (800, 600)
-            olds = self.surface
-            news = pygame.Surface(new)
-            self.surface = news
-            self.generate_grid()
-            self.load_thumbs()
-            self.surface = olds
-            self.activity_manager.update_screen_size(new)
-            self.surface = news
+            for linerect, linefile in zip(self.grid, self.filegrid):
+                for rect, file in zip(linerect, linefile):
+                    if rect.collidepoint(*event.pos):
+                        if file is not None:
+                            self.activity_manager.start_other_activity(image_view.ImageView(), file=file,
+                                                                       ssm=self.spritesheet_manager, fs=self.filesystem)
 
     def stop(self):
         self.running = False
@@ -117,6 +109,7 @@ class ThumbnailView(abstract.GUIActivity):
     def load_thumbs(self):
         files = iter(self.filesystem.get_file_list())
         self.thumbs = [[None for x in y] for y in self.grid]
+        self.filegrid = [[None for x in y] for y in self.grid]
         try:
             for y in range(len(self.grid)):
                 for x in range(len(self.grid[0])):
@@ -125,6 +118,7 @@ class ThumbnailView(abstract.GUIActivity):
                     image = self.spritesheet_manager.get_thumbnail(file, self.max_size.size)
                     if image:
                         self.thumbs[y][x] = image
+                        self.filegrid[y][x] = file
                         self.draw()
                     # except:pass
         except StopIteration:

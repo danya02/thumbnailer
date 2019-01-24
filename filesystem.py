@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import time
 from typing import Optional
 
 import pygame
@@ -26,10 +27,16 @@ l = logging.getLogger(__name__)
 
 
 class LocalFilesystem(abstract.FileSystemInterface):
-    def __init__(self, basepath):
-        """An interface to the local file system."""
+    def __init__(self, basepath, slowness=0):
+        """
+        An interface to the local file system.
+
+        The hard disk is fast, unlike network interactions, so 'slowness' seconds will be delayed before every
+        get_image return.
+        """
         super().__init__()
         self.base_path = basepath
+        self.slowness = slowness
         self.picture_endings = ['.png', '.jpg', '.jpeg']  # TODO: add more image extensions.
 
     def get_file_list(self) -> [str]:
@@ -44,6 +51,7 @@ class LocalFilesystem(abstract.FileSystemInterface):
         return outp
 
     def get_image(self, name, for_thumbnail=False) -> Optional[pygame.Surface]:
+        time.sleep(self.slowness)
         l.debug('Getting image at file %s...', name)
         if for_thumbnail:
             try:

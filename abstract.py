@@ -1,9 +1,16 @@
 #!/usr/bin/python3
 from abc import ABCMeta, abstractmethod
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 import pygame
 import threading
+
+if TYPE_CHECKING:
+    import activity_manager
+else:
+    class Null:pass
+    activity_manager=Null()
+    activity_manager.ActivityManager = Null()
 
 # abstract.py - Abstract Base Classes and miscellaneous object-oriented programming items.
 # Copyright (C) 2019 Danya Generalov (https://github.com/danya02)
@@ -107,7 +114,7 @@ class GUIActivity:
 
     @property
     @abstractmethod
-    def activity_manager(self):
+    def activity_manager(self) -> activity_manager.ActivityManager:
         """
         The activity manager this activity is linked to.
         This must be set before start() is called.
