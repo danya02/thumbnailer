@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import random
 from typing import List
 import threading
 import pygame
@@ -7,6 +8,7 @@ import abstract
 
 import activity_manager
 import image_view
+import spinner
 import spritesheet_manager
 import logging
 
@@ -72,6 +74,7 @@ class ThumbnailView(abstract.GUIActivity):
         self.grid: List[List[pygame.Rect]] = []
         self.thumbs: List[List[pygame.Surface]] = []
         self.filegrid: List[List[object]] = []
+        self.spinnies: List[List[spinner.Spinner]] = []
         self.clock = pygame.time.Clock()
         self.spritesheet_manager = spritesheet_manager.SpritesheetManager('spritesheets/data.json', self.filesystem)
 
@@ -97,14 +100,26 @@ class ThumbnailView(abstract.GUIActivity):
 
     def generate_grid(self):
         self.grid = []
+        self.spinnies = []
         for y in range(0, self.surface.get_height(), self.max_size.height):
             newlist = []
+            spinline = []
             for x in range(0, self.surface.get_width(), self.max_size.width):
                 rect = self.max_size.copy()
                 rect.x = x
                 rect.y = y
                 newlist.append(rect)
+                spinnerobj = spinner.EmptySquareSpinner(self.max_size.size, pygame.Color(random.choice(['red', 'green',
+                                                                                                        'blue', 'white',
+                                                                                                        'yellow',
+                                                                                                        'cyan',
+                                                                                                        'magenta'])))
+                spinnerobj.spinner_phase=random.randint(0,7)
+                spinnerobj.framerate = random.randint(5,20)
+                spinnerobj.start()
+                spinline.append(spinnerobj)
             self.grid.append(newlist)
+            self.spinnies.append(spinline)
 
     def load_thumbs(self):
         files = iter(self.filesystem.get_file_list())
@@ -132,12 +147,15 @@ class ThumbnailView(abstract.GUIActivity):
     def draw(self):
         with self.surface_lock:
             self.surface.fill(pygame.Color('black'))
-            for line, imgline in zip(self.grid, self.thumbs):
-                for cell, img in zip(line, imgline):
+            for line, imgline, spinline in zip(self.grid, self.thumbs, self.spinnies):
+                for cell, img, spinnerobj in zip(line, imgline, spinline):
                     if img:
                         rect: pygame.Rect = img.get_rect()
                         rect.center = cell.center
                         self.surface.blit(img, rect)
+                        spinnerobj.stop()
+                    else:
+                        self.surface.blit(spinnerobj.surface, cell)
 
     @surface_lock.setter
     def surface_lock(self, value):
