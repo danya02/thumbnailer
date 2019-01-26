@@ -54,17 +54,72 @@ class LazySpritesheetLoader:
         return output
 
 
+class Packer:
+    def __init__(self):
+        self.sheets: {object: [pygame.Rect]} = dict()
+        self.sheet_sizes: {str: pygame.Rect} = dict()
+
+    def load_from_data(self, data):
+        for res in data:
+            if 'x' in res:
+                for file in data[res]:
+                    self.sheets.update(
+                        {data[res][file]['sheetname']: list(set(
+                            self.sheets.get(data[res][file]['sheetname'], []) + [tuple(data[res][file]['area'])]))})
+            elif res == 'sheet_sizes':
+                for sheet in data[res]:
+                    self.sheet_sizes.update({sheet: pygame.Rect((0, 0), data[res][sheet])})
+        for i in self.sheets:
+            self.sheets.update({i: [pygame.Rect(q) for q in self.sheets[i]]})
+
+    def add_rect(self, new_rect: pygame.Rect):
+        for sheet in self.sheets:
+            rects = self.sheets[sheet].copy()
+            for rect in rects:
+                crects = rects.copy()
+                crects.remove(rect)
+                new_rect.topleft = rect.topright
+                if new_rect.collidelist(crects)==-1:
+                    if self.sheet_sizes[sheet].contains(new_rect):
+                        self.sheets[sheet].append(new_rect)
+                        return sheet, new_rect
+                new_rect.topleft = rect.bottomright
+                if new_rect.collidelist(crects)==-1:
+                    if self.sheet_sizes[sheet].contains(new_rect):
+                        self.sheets[sheet].append(new_rect)
+                        return sheet, new_rect
+                new_rect.topright = rect.topleft
+                if new_rect.collidelist(crects)==-1:
+                    if self.sheet_sizes[sheet].contains(new_rect):
+                        self.sheets[sheet].append(new_rect)
+                        return sheet, new_rect
+                new_rect.topright = rect.bottomleft
+                if new_rect.collidelist(crects)==-1:
+                    if self.sheet_sizes[sheet].contains(new_rect):
+                        self.sheets[sheet].append(new_rect)
+                        return sheet, new_rect
+        sheet = str(uuid.uuid4())
+        new_rect.topleft = (0, 0)
+        self.sheets.update({sheet:[new_rect]})
+        return sheet, new_rect
+
+    def inform_new_sheet(self, sheet: str, size: (int, int)):
+        self.sheet_sizes.update({sheet: size})
+
+
 class SpritesheetManager(metaclass=abstract.Singleton):
     def __init__(self, file: str, fs: abstract.FileSystemInterface):
         self.fs = fs
         self.ssl = LazySpritesheetLoader()
         self.cache = {}
         self.datapath = file
+        self.packer = Packer()
         try:
             with open(file) as o:
                 self.data = json.load(o)
         except FileNotFoundError:
             self.data = dict()
+        self.packer.load_from_data(self.data)
 
     def save_data(self):
         with open(self.datapath, 'w') as o:
@@ -78,13 +133,25 @@ class SpritesheetManager(metaclass=abstract.Singleton):
             return self.cache[xsep][repr(name)]
 
         def get_new():
-            l.debug('This image not in cache, hitting filesystem.')
+            l.debug('This image not in cache, get from filesystem.')
             image = self.fs.get_image(name)
             image = pygame.transform.scale(image, image.get_rect().fit(pygame.Rect((0, 0), size)).size)
-            fname = str(uuid.uuid4())
-            self.ssl[fname] = image  # TODO: add an algorithm that packs pictures into existing sheets.
+            l.debug('Packing image into spritesheets...')
+            fname, rect = self.packer.add_rect(image.get_rect())
+            l.debug(f'Packed image into  {fname} at {rect}')
+            try:
+                sheet = self.ssl[fname]
+            except pygame.error:
+                sheet = pygame.Surface((2048, 2048))
+            self.packer.inform_new_sheet(fname, sheet.get_rect())
+            sheet_sizes = self.data.get('sheet_sizes', dict())
+            if fname not in sheet_sizes:
+                sheet_sizes.update({fname: sheet.get_size()})
+                self.data.update({'sheet_sizes': sheet_sizes})
+            sheet.blit(image, rect)
+            self.ssl[fname] = sheet
             ndata = self.data.get(xsep, dict())
-            ndata.update({repr(name): {'sheetname': fname, 'area': (0, 0, size[0], size[1])}})
+            ndata.update({repr(name): {'sheetname': fname, 'area': tuple(rect)}})
             self.data.update({xsep: ndata})
             return image
 

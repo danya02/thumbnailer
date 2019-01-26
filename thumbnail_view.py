@@ -114,8 +114,9 @@ class ThumbnailView(abstract.GUIActivity):
                                                                                                         'yellow',
                                                                                                         'cyan',
                                                                                                         'magenta'])))
-                spinnerobj.spinner_phase=random.randint(0,7)
-                spinnerobj.framerate = random.randint(5,20)
+                spinnerobj.spinner_phase = random.randint(0, 7)
+                spinnerobj.framerate = random.randint(5, 20)
+                spinnerobj.delta = random.choice([-1,1])
                 spinnerobj.start()
                 spinline.append(spinnerobj)
             self.grid.append(newlist)

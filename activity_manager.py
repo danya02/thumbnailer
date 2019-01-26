@@ -68,6 +68,7 @@ class ActivityManager:
                         self.display.blit(self.current_activity.surface, (0, 0))
                     else:
                         l.warning('Activity ' + repr(self.current_activity) + ' has not yet init\'ed its surface!')
+                        self.display.fill(pygame.Color('magenta'))
                     self.clock.tick(24)
             else:
                 self.switching_activity_phase += 1

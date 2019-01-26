@@ -76,12 +76,15 @@ class EmptySquareSpinner(Spinner):
         self.rects[5].center = (midx, midy + roff)
         self.rects[6].center = (midx - roff, midy + roff)
         self.rects[7].center = (midx - roff, midy)
+        self.delta=1
 
     def draw(self):
         self.surface.fill(self.bgcolor)
         for i, j in enumerate(self.rects):
             if i != self.spinner_phase:
                 self.surface.fill(self.fgcolor, j)
-        self.spinner_phase += 1
+        self.spinner_phase += self.delta
         if self.spinner_phase >= 8:
             self.spinner_phase = 0
+        if self.spinner_phase <= -1:
+            self.spinner_phase = 7
