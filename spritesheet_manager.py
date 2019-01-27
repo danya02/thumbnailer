@@ -1,4 +1,6 @@
 #!/usr/bin/python3
+import collections
+import traceback
 import uuid
 
 import pygame
@@ -30,6 +32,7 @@ l = logging.getLogger(__name__)
 class LazySpritesheetLoader:
     def __init__(self):
         self.cache = dict()
+        self.deltas_without_save = dict()
 
     def __getitem__(self, item) -> pygame.Surface:
         l.debug('Loading spritesheet %s...', item)
@@ -38,13 +41,23 @@ class LazySpritesheetLoader:
             return self.cache[str(item)]
         else:
             l.debug('It was not found in the spritesheet cache, loading from filesystem.')
-            self.cache.update({str(item): pygame.image.load(f'spritesheets/{item}.png')})
-            return self.cache[str(item)]
+            try:
+                self.cache.update({str(item): pygame.image.load(f'spritesheets/{item}.png')})
+                return self.cache[str(item)]
+            except pygame.error:
+                l.info('Spritesheet is broken or missing: ' + traceback.format_exc())
+                return None
 
     def __setitem__(self, key, value: pygame.Surface):
-        l.debug('Saving spritesheet %s', key)
-        pygame.image.save(value, f'spritesheets/{key}.png')
         self.cache[key] = value
+        try:
+            self.deltas_without_save[key]+=1
+        except KeyError:
+            self.deltas_without_save[key]=1
+        if self.deltas_without_save[key]>50:
+            self.deltas_without_save[key]=0
+            l.info('Saving spritesheet %s now!', key)
+            pygame.image.save(value, f'spritesheets/{key}.png')
 
     @staticmethod
     def cut_out(sheet: pygame.Surface, area: pygame.Rect) -> pygame.Surface:
@@ -79,32 +92,36 @@ class Packer:
                 crects = rects.copy()
                 crects.remove(rect)
                 new_rect.topleft = rect.topright
-                if new_rect.collidelist(crects)==-1:
+                if new_rect.collidelist(crects) == -1:
                     if self.sheet_sizes[sheet].contains(new_rect):
                         self.sheets[sheet].append(new_rect)
                         return sheet, new_rect
                 new_rect.topleft = rect.bottomright
-                if new_rect.collidelist(crects)==-1:
+                if new_rect.collidelist(crects) == -1:
                     if self.sheet_sizes[sheet].contains(new_rect):
                         self.sheets[sheet].append(new_rect)
                         return sheet, new_rect
                 new_rect.topright = rect.topleft
-                if new_rect.collidelist(crects)==-1:
+                if new_rect.collidelist(crects) == -1:
                     if self.sheet_sizes[sheet].contains(new_rect):
                         self.sheets[sheet].append(new_rect)
                         return sheet, new_rect
                 new_rect.topright = rect.bottomleft
-                if new_rect.collidelist(crects)==-1:
+                if new_rect.collidelist(crects) == -1:
                     if self.sheet_sizes[sheet].contains(new_rect):
                         self.sheets[sheet].append(new_rect)
                         return sheet, new_rect
         sheet = str(uuid.uuid4())
         new_rect.topleft = (0, 0)
-        self.sheets.update({sheet:[new_rect]})
+        self.sheets.update({sheet: [new_rect]})
         return sheet, new_rect
 
     def inform_new_sheet(self, sheet: str, size: (int, int)):
         self.sheet_sizes.update({sheet: size})
+
+    def inform_destroy_sheet(self, sheet: str):
+        self.sheet_sizes.pop(sheet)
+        self.sheets.pop(sheet)
 
 
 class SpritesheetManager(metaclass=abstract.Singleton):
@@ -123,9 +140,9 @@ class SpritesheetManager(metaclass=abstract.Singleton):
         self.packer.load_from_data(self.data)
 
     def save_data(self):
-        self.epochs_without_save+=1
-        if self.epochs_without_save>10:
-            self.epochs_without_save=0
+        self.epochs_without_save += 1
+        if self.epochs_without_save > 10:
+            self.epochs_without_save = 0
             l.info('Saving spritesheet arrangement now!')
             with open(self.datapath, 'w') as o:
                 json.dump(self.data, o)
@@ -144,9 +161,8 @@ class SpritesheetManager(metaclass=abstract.Singleton):
             l.debug('Packing image into spritesheets...')
             fname, rect = self.packer.add_rect(image.get_rect())
             l.debug(f'Packed image into  {fname} at {rect}')
-            try:
-                sheet = self.ssl[fname]
-            except pygame.error:
+            sheet = self.ssl[fname]
+            if sheet is None:
                 sheet = pygame.Surface((2048, 2048))
             self.packer.inform_new_sheet(fname, sheet.get_rect())
             sheet_sizes = self.data.get('sheet_sizes', dict())
@@ -166,6 +182,21 @@ class SpritesheetManager(metaclass=abstract.Singleton):
                 l.debug('This file exists in a spritesheet.')
                 item = self.data[xsep][repr(name)]
                 sheet = self.ssl[item['sheetname']]
+                if sheet is None:
+                    l.error('Spritesheet error! Discarding all data from this spritesheet and trying again.')
+                    sheet = item['sheetname']
+                    self.data['sheet_sizes'].pop(sheet)
+                    for i in self.data:
+                        if 'x' in i:
+                            newv = dict(self.data[i])
+                            for j in self.data[i]:
+                                if self.data[i][j]['sheetname'] == sheet:
+                                    newv.pop(j)
+                            self.data.update({i: newv})
+                    self.packer.inform_destroy_sheet(sheet)
+                    self.epochs_without_save = float('inf')
+                    self.save_data()
+                    return self.get_thumbnail(name, size)
                 area = pygame.Rect(item['area'])
                 thumb = self.ssl.cut_out(sheet, area)
                 new = self.cache.get(xsep, dict())

@@ -68,7 +68,7 @@ class ThumbnailView(abstract.GUIActivity):
         self.surface_lock = threading.Lock()
         self.draw_thread: threading.Thread = None
         self.max_size = pygame.Rect(0, 0, 100, 100)
-        self.filesystem = filesystem.LocalFilesystem('/home/danya/Pictures', 1)
+        self.filesystem = filesystem.LocalFilesystem('/home/danya/Pictures', 0)
         self.thumbnails = {}
         self.grid: List[List[pygame.Rect]] = []
         self.thumbs: List[pygame.Surface] = []
