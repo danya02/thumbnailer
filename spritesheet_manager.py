@@ -37,7 +37,7 @@ class LazySpritesheetLoader:
             l.debug('It was found in the cache.')
             return self.cache[str(item)]
         else:
-            l.debug('It was not found in the cache, loading from filesystem.')
+            l.debug('It was not found in the spritesheet cache, loading from filesystem.')
             self.cache.update({str(item): pygame.image.load(f'spritesheets/{item}.png')})
             return self.cache[str(item)]
 
@@ -114,6 +114,7 @@ class SpritesheetManager(metaclass=abstract.Singleton):
         self.cache = {}
         self.datapath = file
         self.packer = Packer()
+        self.epochs_without_save = 0
         try:
             with open(file) as o:
                 self.data = json.load(o)
@@ -122,8 +123,12 @@ class SpritesheetManager(metaclass=abstract.Singleton):
         self.packer.load_from_data(self.data)
 
     def save_data(self):
-        with open(self.datapath, 'w') as o:
-            json.dump(self.data, o)
+        self.epochs_without_save+=1
+        if self.epochs_without_save>10:
+            self.epochs_without_save=0
+            l.info('Saving spritesheet arrangement now!')
+            with open(self.datapath, 'w') as o:
+                json.dump(self.data, o)
 
     def get_thumbnail(self, name, size: (int, int)) -> pygame.Surface:
         xsep = 'x'.join([str(i) for i in size])
@@ -133,7 +138,7 @@ class SpritesheetManager(metaclass=abstract.Singleton):
             return self.cache[xsep][repr(name)]
 
         def get_new():
-            l.debug('This image not in cache, get from filesystem.')
+            l.debug('This image not in spritesheet cache, get from filesystem.')
             image = self.fs.get_image(name)
             image = pygame.transform.scale(image, image.get_rect().fit(pygame.Rect((0, 0), size)).size)
             l.debug('Packing image into spritesheets...')
@@ -153,6 +158,7 @@ class SpritesheetManager(metaclass=abstract.Singleton):
             ndata = self.data.get(xsep, dict())
             ndata.update({repr(name): {'sheetname': fname, 'area': tuple(rect)}})
             self.data.update({xsep: ndata})
+            self.save_data()
             return image
 
         if xsep in self.data:

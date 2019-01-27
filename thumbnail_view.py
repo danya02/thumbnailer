@@ -68,18 +68,45 @@ class ThumbnailView(abstract.GUIActivity):
         self.surface_lock = threading.Lock()
         self.draw_thread: threading.Thread = None
         self.max_size = pygame.Rect(0, 0, 100, 100)
-        self.filesystem = filesystem.LocalFilesystem('/home/danya/Pictures', 3)
+        self.filesystem = filesystem.LocalFilesystem('/home/danya/Pictures', 1)
         self.thumbnails = {}
         self.grid: List[List[pygame.Rect]] = []
-        self.thumbs: List[List[pygame.Surface]] = []
-        self.filegrid: List[List[object]] = []
+        self.thumbs: List[pygame.Surface] = []
+        self.filelist: List[object] = []
         self.spinnies: List[List[spinner.Spinner]] = []
         self.clock = pygame.time.Clock()
         self.spritesheet_manager = spritesheet_manager.SpritesheetManager('spritesheets/data.json', self.filesystem)
+        self.current_offset = 0
+        self.files_amt = 0
+        self.buttons_top = [('<', self.page_back_check, self.page_back),
+                            ('>', self.page_forward_check, self.page_forward)]
+        self.buttons_top_rects_acts = []
+        self.buttons_bottom = []
+        self.buttons_bottom_rects_acts = []
+        self.font = pygame.font.SysFont(pygame.font.get_default_font(), 32)
+        self.thumb_area = pygame.Rect(0, 32, 800, 600)
+
+    @property
+    def items_on_page(self):
+        return len(self.grid) * len(self.grid[0])
+
+    def page_back_check(self):
+        return self.current_offset != 0
+
+    def page_back(self):
+        self.current_offset = max(0, self.current_offset - self.items_on_page)
+        self.generate_grid()
+
+    def page_forward_check(self):
+        return self.current_offset != self.files_amt - self.items_on_page
+
+    def page_forward(self):
+        self.current_offset = min(self.files_amt - self.items_on_page, self.current_offset + self.items_on_page)
+        self.generate_grid()
 
     def start(self, **data):
         self.running = True
-        self.surface = pygame.Surface((800, 600))
+        self.surface = pygame.Surface((800, 864))
         self.generate_grid()
         self.draw_thread = threading.Thread(name='ThumbnailView::DrawThread', target=self.draw_loop, daemon=True)
         self.draw_thread.start()
@@ -87,12 +114,24 @@ class ThumbnailView(abstract.GUIActivity):
 
     def respond_to_event(self, event: pygame.event.Event):
         if event.type == pygame.MOUSEBUTTONDOWN:
-            for linerect, linefile in zip(self.grid, self.filegrid):
-                for rect, file in zip(linerect, linefile):
-                    if rect.collidepoint(*event.pos):
-                        if file is not None:
+            l.info(f'Click at {event.pos}!')
+            offset = self.current_offset - 1
+            with self.surface_lock:
+                for i in self.buttons_top_rects_acts + self.buttons_bottom_rects_acts:
+                    if i[0].collidepoint(*event.pos):
+                        i[1]()
+                        return
+            try:
+                for linerect in self.grid:
+                    for rect in linerect:
+                        offset += 1
+                        if rect.collidepoint(*event.pos):
+                            file = self.filelist[offset]
                             self.activity_manager.start_other_activity(image_view.ImageView(), file=file,
                                                                        ssm=self.spritesheet_manager, fs=self.filesystem)
+                            return
+            except IndexError:
+                pass
 
     def stop(self):
         self.running = False
@@ -100,10 +139,10 @@ class ThumbnailView(abstract.GUIActivity):
     def generate_grid(self):
         self.grid = []
         self.spinnies = []
-        for y in range(0, self.surface.get_height(), self.max_size.height):
+        for y in range(self.thumb_area.top, self.thumb_area.right, self.max_size.height):
             newlist = []
             spinline = []
-            for x in range(0, self.surface.get_width(), self.max_size.width):
+            for x in range(self.thumb_area.left, self.thumb_area.right, self.max_size.width):
                 rect = self.max_size.copy()
                 rect.x = x
                 rect.y = y
@@ -115,20 +154,20 @@ class ThumbnailView(abstract.GUIActivity):
             self.spinnies.append(spinline)
 
     def load_thumbs(self):
-        files = iter(self.filesystem.get_file_list())
-        self.thumbs = [[None for x in y] for y in self.grid]
-        self.filegrid = [[None for x in y] for y in self.grid]
+        files = self.filesystem.get_file_list()
+        self.files_amt = len(files)
+        files = iter(files)
+        self.thumbs = []
+        self.filelist = []
         try:
-            for y in range(len(self.grid)):
-                for x in range(len(self.grid[0])):
-                    file = next(files)
-                    # try:
-                    image = self.spritesheet_manager.get_thumbnail(file, self.max_size.size)
-                    if image:
-                        self.thumbs[y][x] = image
-                        self.filegrid[y][x] = file
-                        self.draw()
-                    # except:pass
+            while self.running:
+                file = next(files)
+                # try:
+                image = self.spritesheet_manager.get_thumbnail(file, self.max_size.size)
+                if image:
+                    self.thumbs.append(image)
+                    self.filelist.append(file)
+                # except:pass
         except StopIteration:
             pass
 
@@ -140,16 +179,55 @@ class ThumbnailView(abstract.GUIActivity):
     def draw(self):
         with self.surface_lock:
             self.surface.fill(pygame.Color('black'))
-            for line, imgline, spinline in zip(self.grid, self.thumbs, self.spinnies):
-                for cell, img, spinnerobj in zip(line, imgline, spinline):
-                    if img:
+            # Draw buttons on top
+            self.buttons_top_rects_acts = []
+            xpos = 0
+            for btn in self.buttons_top:
+                state = btn[1]()
+                text = self.font.render(btn[0], True, pygame.Color('white' if state else 'grey'))
+                rect = text.get_rect()
+                outer_rect = rect.inflate(5, 5)
+                outer_rect.top = 0
+                xpos += 5
+                outer_rect.left = xpos
+                rect.center = outer_rect.center
+                pygame.draw.rect(self.surface, pygame.Color('white' if state else 'grey'), outer_rect, 3)
+                self.surface.blit(text, rect)
+                xpos += outer_rect.width
+                if state:
+                    self.buttons_top_rects_acts.append((outer_rect, btn[2]))
+            # Draw buttons on bottom
+            self.buttons_bottom_rects_acts = []
+            xpos = 0
+            for btn in self.buttons_bottom:
+                state = btn[1]()
+                text = self.font.render(btn[0], True, pygame.Color('white' if state else 'grey'))
+                rect = text.get_rect()
+                outer_rect = rect.inflate(5, 5)
+                outer_rect.top = self.thumb_area.bottom
+                xpos += 5
+                outer_rect.left = xpos
+                rect.center = outer_rect.center
+                pygame.draw.rect(self.surface, pygame.Color('white' if state else 'grey'), outer_rect, 3)
+                self.surface.blit(text, rect)
+                xpos += outer_rect.width
+                if state:
+                    self.buttons_bottom_rects_acts.append((outer_rect, btn[2]))
+
+            # Draw thumbnails
+            offset = self.current_offset
+            for line, spinline in zip(self.grid, self.spinnies):
+                for cell, spinnerobj in zip(line, spinline):
+                    offset += 1
+                    try:
+                        img = self.thumbs[offset]
                         rect: pygame.Rect = img.get_rect()
                         rect.center = cell.center
                         self.surface.blit(img, rect)
                         spinnerobj.stop()
-                    else:
-                        self.surface.blit(spinnerobj.surface, cell)
-
+                    except IndexError:
+                        if offset < self.files_amt:
+                            self.surface.blit(spinnerobj.surface, cell)
 
     @surface_lock.setter
     def surface_lock(self, value):

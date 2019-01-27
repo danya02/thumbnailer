@@ -63,12 +63,21 @@ class ActivityManager:
         while self.running:
             if not self.switching_activity:
                 self.switching_activity_phase = 0
-                with self.current_activity.surface_lock:
-                    if self.current_activity.surface:
-                        self.display.blit(self.current_activity.surface, (0, 0))
-                    else:
-                        l.warning('Activity ' + repr(self.current_activity) + ' has not yet init\'ed its surface!')
-                        self.display.fill(pygame.Color('magenta'))
+                self.only_switching_size = False
+                try:
+                    with self.current_activity.surface_lock:
+                        if self.current_activity.surface:
+                            self.display.blit(self.current_activity.surface, (0, 0))
+                            self.clock.tick(24)
+                            if self.current_activity.surface.get_size()!=self.display.get_size():
+                                self.update_screen_size(self.current_activity.surface.get_size())
+                        else:
+                            l.warning('Activity ' + repr(self.current_activity) + ' has not yet init\'ed its surface!')
+                            self.display.fill(pygame.Color('magenta'))
+                except AttributeError:
+                    l.critical('Current activity has no surface lock!')
+                    self.display.fill(pygame.Color('magenta'))
+
                     self.clock.tick(24)
             else:
                 self.switching_activity_phase += 1
