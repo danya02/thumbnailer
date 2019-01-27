@@ -1,16 +1,15 @@
 #!/usr/bin/python3
-import random
-from typing import List
+import logging
 import threading
-import pygame
-import filesystem
-import abstract
+from typing import List
 
-import activity_manager
+import pygame
+
+import abstract
+import filesystem
 import image_view
 import spinner
 import spritesheet_manager
-import logging
 
 l = logging.getLogger(__name__)
 
@@ -109,14 +108,7 @@ class ThumbnailView(abstract.GUIActivity):
                 rect.x = x
                 rect.y = y
                 newlist.append(rect)
-                spinnerobj = spinner.EmptySquareSpinner(self.max_size.size, pygame.Color(random.choice(['red', 'green',
-                                                                                                        'blue', 'white',
-                                                                                                        'yellow',
-                                                                                                        'cyan',
-                                                                                                        'magenta'])))
-                spinnerobj.spinner_phase = random.randint(0, 7)
-                spinnerobj.framerate = random.randint(5, 20)
-                spinnerobj.delta = random.choice([-1,1])
+                spinnerobj = spinner.EmptySquareSpinner.create_randomised(rect.size)
                 spinnerobj.start()
                 spinline.append(spinnerobj)
             self.grid.append(newlist)
@@ -157,6 +149,7 @@ class ThumbnailView(abstract.GUIActivity):
                         spinnerobj.stop()
                     else:
                         self.surface.blit(spinnerobj.surface, cell)
+
 
     @surface_lock.setter
     def surface_lock(self, value):

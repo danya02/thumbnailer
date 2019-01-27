@@ -1,9 +1,13 @@
 #!/usr/bin/python3
+import colorsys
+import random
 import threading
 
 import pygame
 
 import logging
+
+import color
 
 l = logging.getLogger(__name__)
 
@@ -57,8 +61,24 @@ class Spinner:
     def draw(self):
         raise NotImplementedError
 
+    @classmethod
+    def create_randomised(cls, size):
+        raise NotImplementedError
+
 
 class EmptySquareSpinner(Spinner):
+    @classmethod
+    def create_randomised(cls, size):
+        color = tuple([int(i * 255) for i in colorsys.hsv_to_rgb(random.random(), 1, 1)])
+        c = EmptySquareSpinner(size, pygame.Color(*color))
+        #c.bgcolor = pygame.Color(64,0,0)
+        c.spinner_phase = random.randint(0, 7)
+        c.framerate = random.randint(5, 20)
+        c.delta = random.choice([-1, 1])
+        c.color_shift_amount = (random.random() / 50) * random.choice([1, -1])
+        #c.do_color_shift = True
+        return c
+
     def __init__(self, size: (int, int), fgcolor: pygame.Color, bgcolor: pygame.Color = pygame.Color('black'),
                  rect_size=10, roff=20):
         super().__init__(size)
@@ -76,7 +96,9 @@ class EmptySquareSpinner(Spinner):
         self.rects[5].center = (midx, midy + roff)
         self.rects[6].center = (midx - roff, midy + roff)
         self.rects[7].center = (midx - roff, midy)
-        self.delta=1
+        self.delta = 1
+        self.do_color_shift = False
+        self.color_shift_amount = 0.0
 
     def draw(self):
         self.surface.fill(self.bgcolor)
@@ -88,3 +110,6 @@ class EmptySquareSpinner(Spinner):
             self.spinner_phase = 0
         if self.spinner_phase <= -1:
             self.spinner_phase = 7
+        if self.do_color_shift:
+            self.fgcolor = color.advance_color_wheel(self.fgcolor, self.color_shift_amount)
+            self.bgcolor = color.advance_color_wheel(self.bgcolor, self.color_shift_amount)
