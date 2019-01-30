@@ -72,7 +72,10 @@ class ImageView(abstract.GUIActivity):
                 self.surface.blit(self.image, (0, 0))
                 if self.surface.get_size() != self.image.get_size():
                     l.info('image size update detected!')
-                    self.activity_manager.update_screen_size(self.image.get_size())
+                    try:
+                        self.activity_manager.update_screen_size(self.image.get_size())
+                    except AttributeError:
+                        l.error('My activity manager did not attach!')
                     self.surface = pygame.Surface(self.image.get_size())
                     self.spinner.stop()
             else:

@@ -1,11 +1,15 @@
 #!/usr/bin/python3
+import logging
+import os
+import random
 import time
 from typing import Optional
 
 import pygame
-import os
+
 import abstract
-import logging
+import color
+
 l = logging.getLogger(__name__)
 
 
@@ -60,3 +64,27 @@ class LocalFilesystem(abstract.FileSystemInterface):
                 return None
         else:
             return pygame.image.load(name)
+
+
+class VirtualFileSystem(abstract.FileSystemInterface):
+    def __init__(self):
+        """
+        A file system interface that yields infinite random images.
+        Mostly useful for testing packing algorithm.
+        """
+        super().__init__()
+
+    def get_file_list(self):
+        if 'a' not in self.__dict__:
+            random.seed(0)
+            self.a = [f'{random.randint(10, 1000)}x{random.randint(10, 1000)},{tuple(color.random_pure_color())}' for i
+                      in range(8192)]
+        return self.a
+
+    def get_image(self, name):
+        time.sleep(0.1)
+        l.debug('Getting virtual image by_req ' + name)
+        s = pygame.Surface(tuple(map(int, name.split(',')[0].split('x'))))
+        a = eval(','.join(name.split(',')[1:]))  # here be deep magic
+        s.fill(pygame.Color(*a))
+        return s
