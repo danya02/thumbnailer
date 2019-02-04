@@ -55,8 +55,8 @@ class ImageSaver(abstract.GUIActivity):
         self.running = True
         self.draw_thread = None
         self.size_select_thread = None
-        self.max_dimension = 512
-        self.max_size = 512 * 1024
+        self.max_dimension = 64
+        self.max_size = 500 * 1024
         self.extension = '.jpg'
         self.clock = pygame.time.Clock()
         self.timeout = -1
@@ -110,7 +110,7 @@ class ImageSaver(abstract.GUIActivity):
         file = './output/' + str(len(existing) + 1) + self.extension
 
         def scale(img: pygame.Surface, max_dimension):
-            fraction = (max(img.get_width(), img.get_height())) / max_dimension
+            fraction = max_dimension/(max(img.get_width(), img.get_height()))
             return pygame.transform.scale(img, (int(img.get_width() * fraction), int(img.get_height() * fraction)))
 
         # rescale under maximum dimension
