@@ -9,6 +9,8 @@ import json
 import abstract
 import logging
 
+import global_variables
+
 l = logging.getLogger(__name__)
 
 
@@ -51,13 +53,14 @@ class LazySpritesheetLoader:
     def __setitem__(self, key, value: pygame.Surface):
         self.cache[key] = value
         try:
-            self.deltas_without_save[key]+=1
+            self.deltas_without_save[key] += 1
         except KeyError:
-            self.deltas_without_save[key]=1
-        if self.deltas_without_save[key]>50:
-            self.deltas_without_save[key]=0
+            self.deltas_without_save[key] = 1
+        if self.deltas_without_save[key] > 50:
+            self.deltas_without_save[key] = 0
             l.info('Saving spritesheet %s now!', key)
-            pygame.image.save(value, f'spritesheets/{key}.png')
+            with global_variables.global_quit_lock:
+                pygame.image.save(value, f'spritesheets/{key}.png')
 
     @staticmethod
     def cut_out(sheet: pygame.Surface, area: pygame.Rect) -> pygame.Surface:
@@ -141,11 +144,12 @@ class SpritesheetManager(metaclass=abstract.Singleton):
 
     def save_data(self):
         self.epochs_without_save += 1
-        if self.epochs_without_save > 10:
+        if self.epochs_without_save > 100:
             self.epochs_without_save = 0
             l.info('Saving spritesheet arrangement now!')
-            with open(self.datapath, 'w') as o:
-                json.dump(self.data, o)
+            with global_variables.global_quit_lock:
+                with open(self.datapath, 'w') as o:
+                    json.dump(self.data, o)
 
     def get_thumbnail(self, name, size: (int, int)) -> pygame.Surface:
         xsep = 'x'.join([str(i) for i in size])

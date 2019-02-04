@@ -59,8 +59,8 @@ class ImageView(abstract.GUIActivity):
         self.caller = data['calling_activity']
         self.spinner = spinner.EmptySquareSpinner(self.surface.get_size(), pygame.Color('red'))
         self.spinner.start()
-        threading.Thread(target=self.load_image, name=f'ImageView::FileLoader::{repr(file)}').start()
-        threading.Thread(target=self.draw_loop, name=f'ImageView::DrawLoop::{repr(file)}').start()
+        threading.Thread(target=self.load_image, name=f'ImageView::FileLoader::{repr(file)}', daemon=True).start()
+        threading.Thread(target=self.draw_loop, name=f'ImageView::DrawLoop::{repr(file)}', daemon=True).start()
 
     def load_image(self):
         self.loaded = False
