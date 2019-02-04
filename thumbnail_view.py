@@ -68,7 +68,7 @@ class ThumbnailView(abstract.GUIActivity):
         self.surface_lock = threading.Lock()
         self.draw_thread: threading.Thread = None
         self.max_size = pygame.Rect(0, 0, 100, 100)
-        self.filesystem = filesystem.VirtualFileSystem()
+        self.filesystem = filesystem.LocalFilesystem('/home/danya/Pictures',0.01)
         self.thumbnails = {}
         self.grid: List[List[pygame.Rect]] = []
         self.thumbs: List[pygame.Surface] = []
@@ -115,7 +115,7 @@ class ThumbnailView(abstract.GUIActivity):
     def respond_to_event(self, event: pygame.event.Event):
         if event.type == pygame.MOUSEBUTTONDOWN:
             l.info(f'Click at {event.pos}!')
-            offset = self.current_offset - 1
+            offset = self.current_offset
             with self.surface_lock:
                 for i in self.buttons_top_rects_acts + self.buttons_bottom_rects_acts:
                     if i[0].collidepoint(*event.pos):

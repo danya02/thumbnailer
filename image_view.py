@@ -8,6 +8,7 @@ import logging
 
 import spinner
 import spritesheet_manager
+import image_save
 
 l = logging.getLogger(__name__)
 
@@ -39,9 +40,12 @@ class ImageView(abstract.GUIActivity):
         self.surface = pygame.Surface((800, 600))
         self.surface.fill(pygame.Color('white'))
         self.surface_lock = threading.Lock()
+        self.btn_rect = pygame.Rect(0, 0, 0, 0)
         self.clock = pygame.time.Clock()
         self.caller: abstract.GUIActivity = None
         self.spinner: spinner.Spinner = None
+        self.font = pygame.font.SysFont(pygame.font.get_default_font(), 32)
+        self.loaded = False
 
     def start(self, file=None, ssm: spritesheet_manager.SpritesheetManager = None,
               fs: abstract.FileSystemInterface = None, **data: dict):
@@ -56,9 +60,13 @@ class ImageView(abstract.GUIActivity):
         threading.Thread(target=self.draw_loop, name=f'ImageView::DrawLoop::{repr(file)}').start()
 
     def load_image(self):
+        self.loaded = False
         l.debug('Loading image from filesystem...')
         image = self.fs.get_image(self.file)
         self.image = image
+        self.btn_rect.width = self.image.get_width()
+        self.btn_rect.top = self.image.get_height()
+        self.btn_rect.height = 48
         l.debug('Image loaded!')
 
     def draw_loop(self):
@@ -70,24 +78,36 @@ class ImageView(abstract.GUIActivity):
         with self.surface_lock:
             if self.image is not None:
                 self.surface.blit(self.image, (0, 0))
-                if self.surface.get_size() != self.image.get_size():
+                pygame.draw.rect(self.surface, pygame.Color('white'), self.btn_rect, 5)
+                t = self.font.render("Prepare for publishing", True, pygame.Color('white'))
+                tr = t.get_rect()
+                tr.center = self.btn_rect.center
+                self.surface.blit(t, tr)
+                if self.surface.get_size() != self.image.get_size() and not self.loaded:
                     l.info('image size update detected!')
+                    self.loaded = True
                     try:
-                        self.activity_manager.update_screen_size(self.image.get_size())
+                        self.activity_manager.update_screen_size((self.image.get_width(), self.image.get_height() +
+                                                                  self.btn_rect.height))
                     except AttributeError:
                         l.error('My activity manager did not attach!')
-                    self.surface = pygame.Surface(self.image.get_size())
+                    self.surface = pygame.Surface((self.image.get_width(), self.image.get_height() +
+                                                   self.btn_rect.height))
                     self.spinner.stop()
             else:
                 l.debug('waiting for image to load...')
-                self.surface.blit(self.spinner.surface, (0,0))
+                self.surface.blit(self.spinner.surface, (0, 0))
 
     def stop(self):
         self.running = False
 
     def respond_to_event(self, event: pygame.event.Event):
         if event.type == pygame.MOUSEBUTTONDOWN:
-            self.activity_manager.start_other_activity(self.caller)
+            if self.btn_rect.collidepoint(*event.pos):
+                self.activity_manager.start_other_activity(image_save.ImageSaver(self.surface.get_size()),
+                                                           image=self.image, return_to=self.caller)
+            else:
+                self.activity_manager.start_other_activity(self.caller)
 
     @property
     def running(self):
