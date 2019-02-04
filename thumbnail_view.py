@@ -138,6 +138,9 @@ class ThumbnailView(abstract.GUIActivity):
 
     def generate_grid(self):
         self.grid = []
+        for line in self.spinnies:
+            for item in line:
+                item.stop()
         self.spinnies = []
         for y in range(self.thumb_area.top, self.thumb_area.right, self.max_size.height):
             newlist = []
