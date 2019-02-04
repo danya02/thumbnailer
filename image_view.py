@@ -46,6 +46,9 @@ class ImageView(abstract.GUIActivity):
         self.spinner: spinner.Spinner = None
         self.font = pygame.font.SysFont(pygame.font.get_default_font(), 32)
         self.loaded = False
+        self.max_width = 1200
+        self.max_height = 800
+        self.true_image = pygame.Surface((1,1))
 
     def start(self, file=None, ssm: spritesheet_manager.SpritesheetManager = None,
               fs: abstract.FileSystemInterface = None, **data: dict):
@@ -63,6 +66,13 @@ class ImageView(abstract.GUIActivity):
         self.loaded = False
         l.debug('Loading image from filesystem...')
         image = self.fs.get_image(self.file)
+        self.true_image = image
+        if image.get_width()>self.max_width:
+            frac = image.get_width()/self.max_width
+            image = pygame.transform.scale(image, (int(image.get_width()/frac), int(image.get_height()/frac)))
+        if image.get_height()>self.max_height:
+            frac = image.get_height()/self.max_height
+            image = pygame.transform.scale(image, (int(image.get_width()/frac), int(image.get_height()/frac)))
         self.image = image
         self.btn_rect.width = self.image.get_width()
         self.btn_rect.top = self.image.get_height()
@@ -105,7 +115,7 @@ class ImageView(abstract.GUIActivity):
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.btn_rect.collidepoint(*event.pos):
                 self.activity_manager.start_other_activity(image_save.ImageSaver(self.surface.get_size()),
-                                                           image=self.image, return_to=self.caller)
+                                                           image=self.true_image, return_to=self.caller)
             else:
                 self.activity_manager.start_other_activity(self.caller)
 
