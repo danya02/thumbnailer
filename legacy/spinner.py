@@ -7,7 +7,7 @@ import pygame
 
 import logging
 
-import color
+from legacy import color
 
 l = logging.getLogger(__name__)
 

@@ -5,8 +5,7 @@ import traceback
 import abstract
 import pygame
 
-import global_variables
-import thumbnail_view
+from legacy import thumbnail_view, global_variables
 import logging
 
 l = logging.getLogger(__name__)

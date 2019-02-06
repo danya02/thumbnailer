@@ -7,8 +7,7 @@ import pygame
 
 import abstract
 import filesystem
-import image_view
-import spinner
+from legacy import spinner, image_view
 import spritesheet_manager
 
 l = logging.getLogger(__name__)

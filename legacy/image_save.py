@@ -4,7 +4,7 @@ import threading
 import pygame
 
 import abstract
-import spinner
+from legacy import spinner
 import os
 
 

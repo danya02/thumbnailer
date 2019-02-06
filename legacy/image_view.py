@@ -6,9 +6,8 @@ import abstract
 
 import logging
 
-import spinner
+from legacy import spinner, image_save
 import spritesheet_manager
-import image_save
 
 l = logging.getLogger(__name__)
 

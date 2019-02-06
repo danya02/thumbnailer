@@ -6,7 +6,7 @@ import pygame
 import threading
 
 if TYPE_CHECKING:
-    import activity_manager
+    from legacy import activity_manager
 else:
     class Null:pass
     activity_manager=Null()

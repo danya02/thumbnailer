@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-import collections
 import traceback
 import uuid
 
@@ -9,7 +8,7 @@ import json
 import abstract
 import logging
 
-import global_variables
+from legacy import global_variables
 
 l = logging.getLogger(__name__)
 

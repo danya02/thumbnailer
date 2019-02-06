@@ -8,7 +8,7 @@ from typing import Optional
 import pygame
 
 import abstract
-import color
+from legacy import color
 
 l = logging.getLogger(__name__)
 
