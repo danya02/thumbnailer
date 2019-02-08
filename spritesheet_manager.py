@@ -183,9 +183,7 @@ class SpritesheetManager(metaclass=abstract.Singleton):
         sheet = self.ssl[spritesheet]
         if sheet is None:
             l.error('Spritesheet error! Discarding all data from this spritesheet and trying again.')
-            for i in spritesheet.thumbnails:
-                i.delete().execute()
-            spritesheet.delete().execute()
+            spritesheet.delete_instance(recursive=True)
             return self.get_thumbnail(name, size)
 
         area = pygame.Rect(thumbnail.x, thumbnail.y, thumbnail.width, thumbnail.height)

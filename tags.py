@@ -19,6 +19,7 @@ import peewee
 
 db = peewee.SqliteDatabase('./tags.sqlite')
 
+NULL='null tag'
 
 class BaseModel(peewee.Model):
     class Meta:
@@ -48,7 +49,7 @@ def get_all_tags():
 def new_picture(name):
     with db.atomic():
         pic = Picture.create(name=name)
-        null_tag, _ = Tag.get_or_create(name='null tag')
+        null_tag, _ = Tag.get_or_create(name=NULL)
         Mapping.create(picture=pic, tag=null_tag)
 
 
@@ -56,7 +57,7 @@ def assign_tag(pic_name, tag_name):
     with db.atomic():
         pic, _ = Picture.get_or_create(name=pic_name)
         tag, _ = Tag.get_or_create(name=tag_name)
-        null_tag, _ = Tag.get_or_create(name='null tag')
+        null_tag, _ = Tag.get_or_create(name=NULL)
         null_map = Mapping.get_or_none(tag=null_tag, picture=pic)
         if null_tag is not None:
             null_map.delete().execute()
@@ -71,7 +72,7 @@ def remove_tag(pic_name, tag_name):
         if mapping is not None:
             mapping.delete().execute()
         if Mapping.select().where(Mapping.picture==pic).count() == 0:
-            null_tag, _ = Tag.get_or_create(name='null tag')
+            null_tag, _ = Tag.get_or_create(name=NULL)
             Mapping.create(tag=null_tag, picture=pic)
 
 
@@ -81,14 +82,14 @@ def create_tag(tag):
 
 def destroy_tag(tag):
     tag = Tag.get_or_none(name=tag)
-    null_tag, _ = Tag.get_or_create(name='null tag')
+    null_tag, _ = Tag.get_or_create(name=NULL)
     if tag is not None:
         with db.atomic():
             for i in tag.mappings:
-                if i.picture.mappings==1:
+                if i.picture.mappings.count()==1:
                     Mapping.create(picture=i.picture, tag=null_tag)
-                i.delete().execute()
-            tag.delete().execute()
+                i.delete_instance()
+            tag.delete_instance()
 
 def get_pictures_by_tags(tags):
     tag_objs = [Tag.get(Tag.name == i) for i in tags]

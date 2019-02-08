@@ -14,6 +14,7 @@ import time
 import os
 import threading
 import collections
+import tags
 
 import logging
 
@@ -34,6 +35,12 @@ class MainAppGTK:
         self.iconview = self.builder.get_object('PictureIconView')
         self.iconview.connect('selection_changed', self.selection_changed)
 
+        self.image_view = self.builder.get_object('BigImageView')
+
+        self.tag_popover = self.builder.get_object('TagMenuPopover')
+        self.tag_box = self.builder.get_object('TagMenuBox')
+        self.builder.get_object('TagMenuButton').connect('clicked', self.open_tag_popover)
+
         self.models = collections.defaultdict(lambda: gtk.ListStore(GdkPixbuf.Pixbuf, str))
         self.built_models = collections.defaultdict(lambda: False)
         self.len_models = 1
@@ -48,8 +55,8 @@ class MainAppGTK:
         self.spritesheet_manager = spritesheet_manager.SpritesheetManager('spritesheets/data.json', self.filesystem)
         threading.Thread(target=self.load_thumbnails, daemon=True).start()
         self.prev(None)
-        self.status_message='Ready.'
-        self.status_spinner=False
+        self.status_message = 'Ready.'
+        self.status_spinner = False
         self.status_changed = True
         gobject.timeout_add(100, self.update_status_loop)
 
@@ -78,43 +85,36 @@ class MainAppGTK:
         value, path, cell = widget.get_cursor()
         tree_iter = self.models[self.page].get_iter(path)
         value = self.models[self.page].get_value(tree_iter, 1)
-        print(value)
+        self.image_view.set_from_pixbuf(self.surface_to_pixbuf(self.filesystem.get_image(eval(value))))
 
     def add_iconview_item(self, name, liststore):
         max_rect = (100, 100)
         img = self.spritesheet_manager.get_thumbnail(name, max_rect)
-        filename = f'/tmp/thumbnails/{str(uuid.uuid4())}.png'
-        try:
-            os.makedirs('/tmp/thumbnails/')
-        except FileExistsError:
-            pass
-        pygame.image.save(img, filename)
-        #        data = pygame.image.tostring(img, 'RGB')
-        #        pixbuf = GdkPixbuf.Pixbuf.new_from_data(data, GdkPixbuf.Colorspace.RGB, False, 8, img.get_width(), img.get_height(), img.get_width()*3)
-        pixbuf = GdkPixbuf.Pixbuf.new_from_file(filename)
-        liststore.append([pixbuf, repr(name)])
+        liststore.append([self.surface_to_pixbuf(img), repr(name)])
 
     def update_status_loop(self):
         if self.status_changed:
-            self.builder.get_object('BottomBarSpinner').props.active=self.status_spinner
+            self.status_changed = False
+            self.builder.get_object('BottomBarSpinner').props.active = self.status_spinner
             self.builder.get_object('BottomBarStatusLabel').set_text(self.status_message)
-        gobject.timeout_add(100,self.update_status_loop)
+        gobject.timeout_add(100, self.update_status_loop)
 
     def update_status(self, message, spinner_active):
         self.status_message = message
         self.status_spinner = spinner_active
+        self.status_changed = True
 
     def load_thumbnails(self):
         page = 0
         n = 0
-        gn=0
+        gn = 0
         #        iconview = self.builder.get_object('PictureIconView')
         #        iconview.set_model(liststore)
         #        iconview.show_all()
         for i in self.file_list:
             n += 1
-            gn+=1
-            self.update_status(f'Loading preview {n}/{len(self.file_list)}', True)
+            gn += 1
+            self.update_status(f'Loading preview {gn}/{len(self.file_list)}', True)
             if n > self.items_on_page:
                 n = 0
                 self.len_models += 1
@@ -122,6 +122,62 @@ class MainAppGTK:
                 print('new page', page)
             self.add_iconview_item(i, self.models[page])
             # time.sleep(0.01)
+        self.update_status('Ready.', False)
+
+    def surface_to_pixbuf(self, surface):
+        filename = f'/tmp/thumbnailer_pixbuf_convert/{str(uuid.uuid4())}.png'
+        try:
+            os.makedirs('/tmp/thumbnailer_pixbuf_convert/')
+        except FileExistsError:
+            pass
+        pygame.image.save(surface, filename)
+        #        data = pygame.image.tostring(img, 'RGB')
+        #        pixbuf = GdkPixbuf.Pixbuf.new_from_data(data, GdkPixbuf.Colorspace.RGB, False, 8, img.get_width(), img.get_height(), img.get_width()*3)
+        pixbuf = GdkPixbuf.Pixbuf.new_from_file(filename)
+        return pixbuf
+
+    def tag_checkbox_switched(self, widget, tag):
+        print(tag)
+
+    def tag_remove_click(self, widget, tag):
+        l.info('Destroying tag '+tag)
+        tags.destroy_tag(tag)
+        self.build_tag_menu()
+
+    def add_new_tag(self, widget):
+        new_tag = widget.get_text()
+        l.info('Adding new tag '+new_tag)
+        tags.create_tag(new_tag)
+        self.build_tag_menu()
+
+    def build_tag_menu(self):
+        taglist = tags.get_all_tags()
+
+        self.tag_box.foreach(lambda x: x.destroy())
+        try:
+            taglist.remove(tags.NULL)
+        except ValueError:
+            pass
+        textbox = gtk.Entry()
+        textbox.connect('activate', self.add_new_tag)
+        self.tag_box.add(textbox)
+        null_checkbox = gtk.CheckButton.new_with_label(tags.NULL)
+        null_checkbox.connect('toggled', self.tag_checkbox_switched, tags.NULL)
+        self.tag_box.add(null_checkbox)
+        for tag in sorted(taglist):
+            checkbox = gtk.CheckButton.new_with_label(tag)
+            del_button = gtk.Button.new_from_icon_name('gtk-remove', gtk.IconSize.BUTTON)
+            checkbox.connect('toggled', self.tag_checkbox_switched, tag)
+            del_button.connect('clicked', self.tag_remove_click, tag)
+            box = gtk.Box(gtk.Orientation.HORIZONTAL, 0)
+            box.add(checkbox)
+            box.add(del_button)
+            self.tag_box.add(box)
+        self.tag_box.show_all()
+
+    def open_tag_popover(self, widget):
+        self.build_tag_menu()
+        self.tag_popover.show()
 
 
 if __name__ == "__main__":
