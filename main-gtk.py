@@ -43,6 +43,10 @@ class MainAppGTK:
         self.spritesheet_manager = spritesheet_manager.SpritesheetManager('spritesheets/data.json', self.filesystem)
         threading.Thread(target=self.load_thumbnails, daemon=True).start()
         self.prev(None)
+        self.status_message='Ready.'
+        self.status_spinner=False
+        self.status_changed = True
+        gobject.timeout_add(100, self.update_status_loop)
 
     def shutdown(self, arg):
         try:
@@ -85,14 +89,27 @@ class MainAppGTK:
         pixbuf = GdkPixbuf.Pixbuf.new_from_file(filename)
         liststore.append([pixbuf, repr(name)])
 
+    def update_status_loop(self):
+        if self.status_changed:
+            self.builder.get_object('BottomBarSpinner').props.active=self.status_spinner
+            self.builder.get_object('BottomBarStatusLabel').set_text(self.status_message)
+        gobject.timeout_add(100,self.update_status_loop)
+
+    def update_status(self, message, spinner_active):
+        self.status_message = message
+        self.status_spinner = spinner_active
+
     def load_thumbnails(self):
         page = 0
         n = 0
+        gn=0
         #        iconview = self.builder.get_object('PictureIconView')
         #        iconview.set_model(liststore)
         #        iconview.show_all()
-        for i in self.filesystem.get_file_list():
+        for i in self.file_list:
             n += 1
+            gn+=1
+            self.update_status(f'Loading preview {n}/{len(self.file_list)}', True)
             if n > self.items_on_page:
                 n = 0
                 self.len_models += 1
