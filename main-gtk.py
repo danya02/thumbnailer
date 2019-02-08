@@ -15,6 +15,11 @@ import os
 import threading
 import collections
 
+import logging
+
+l = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
+
 
 class MainAppGTK:
     def __init__(self):
