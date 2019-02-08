@@ -27,7 +27,9 @@ l = logging.getLogger(__name__)
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-db = peewee.SqliteDatabase('spritesheets/data.sqlite')
+db = peewee.SqliteDatabase('spritesheets/data.sqlite', pragmas={
+    'journal_mode': 'wal',
+    'cache_size': -1024 * 1024})
 
 
 class BaseModel(peewee.Model):

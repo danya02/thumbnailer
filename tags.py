@@ -17,7 +17,9 @@ import peewee
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-db = peewee.SqliteDatabase('./tags.sqlite')
+db = peewee.SqliteDatabase('./tags.sqlite', pragmas={
+    'journal_mode': 'wal',
+    'cache_size': -1024 * 1024})
 
 NULL='null tag'
 
@@ -48,9 +50,11 @@ def get_all_tags():
 
 def new_picture(name):
     with db.atomic():
-        pic = Picture.create(name=name)
-        null_tag, _ = Tag.get_or_create(name=NULL)
-        Mapping.create(picture=pic, tag=null_tag)
+        pic, created = Picture.get_or_create(name=name)
+        if created:
+            null_tag, _ = Tag.get_or_create(name=NULL)
+            Mapping.create(picture=pic, tag=null_tag)
+        return pic
 
 
 def assign_tag(pic_name, tag_name):
@@ -59,9 +63,10 @@ def assign_tag(pic_name, tag_name):
         tag, _ = Tag.get_or_create(name=tag_name)
         null_tag, _ = Tag.get_or_create(name=NULL)
         null_map = Mapping.get_or_none(tag=null_tag, picture=pic)
-        if null_tag is not None:
-            null_map.delete().execute()
-        Mapping.create(picture=pic, tag=tag)
+
+        if null_map is not None:
+            null_map.delete_instance()
+        Mapping.get_or_create(picture=pic, tag=tag)
 
 
 def remove_tag(pic_name, tag_name):
@@ -70,7 +75,7 @@ def remove_tag(pic_name, tag_name):
         tag, _ = Tag.get_or_create(name=tag_name)
         mapping = Mapping.get_or_none(tag=tag, picture=pic)
         if mapping is not None:
-            mapping.delete().execute()
+            mapping.delete_instance()
         if Mapping.select().where(Mapping.picture==pic).count() == 0:
             null_tag, _ = Tag.get_or_create(name=NULL)
             Mapping.create(tag=null_tag, picture=pic)
@@ -96,3 +101,10 @@ def get_pictures_by_tags(tags):
     mappings = list(Mapping.select(Mapping.picture).where(Mapping.tag << tag_objs))
     pictures = [i.picture.name for i in mappings]
     return pictures
+
+def get_tags_of_picture(name):
+    picture = new_picture(name)
+    tags=[]
+    for i in picture.mappings:
+        tags.append(i.tag.name)
+    return tags

@@ -19,7 +19,7 @@ import tags
 import logging
 
 l = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 class MainAppGTK:
@@ -41,6 +41,10 @@ class MainAppGTK:
         self.tag_box = self.builder.get_object('TagMenuBox')
         self.builder.get_object('TagMenuButton').connect('clicked', self.open_tag_popover)
 
+        self.image_tag_popover = self.builder.get_object('ImageTagMenuPopover')
+        self.image_tag_box = self.builder.get_object('ImageTagMenuBox')
+        self.builder.get_object('ImageTagMenuButton').connect('clicked', self.open_assign_tag_popover)
+
         self.models = collections.defaultdict(lambda: gtk.ListStore(GdkPixbuf.Pixbuf, str))
         self.built_models = collections.defaultdict(lambda: False)
         self.len_models = 1
@@ -58,6 +62,7 @@ class MainAppGTK:
         self.status_message = 'Ready.'
         self.status_spinner = False
         self.status_changed = True
+        self.selected_picture = ''
         gobject.timeout_add(100, self.update_status_loop)
 
     def shutdown(self, arg):
@@ -85,6 +90,7 @@ class MainAppGTK:
         value, path, cell = widget.get_cursor()
         tree_iter = self.models[self.page].get_iter(path)
         value = self.models[self.page].get_value(tree_iter, 1)
+        self.selected_picture = value
         self.image_view.set_from_pixbuf(self.surface_to_pixbuf(self.filesystem.get_image(eval(value))))
 
     def add_iconview_item(self, name, liststore):
@@ -112,6 +118,7 @@ class MainAppGTK:
         #        iconview.set_model(liststore)
         #        iconview.show_all()
         for i in self.file_list:
+            tags.new_picture(i)
             n += 1
             gn += 1
             self.update_status(f'Loading preview {gn}/{len(self.file_list)}', True)
@@ -143,16 +150,17 @@ class MainAppGTK:
         l.info('Destroying tag '+tag)
         tags.destroy_tag(tag)
         self.build_tag_menu()
+        self.build_assign_tag_menu()
 
     def add_new_tag(self, widget):
         new_tag = widget.get_text()
         l.info('Adding new tag '+new_tag)
         tags.create_tag(new_tag)
         self.build_tag_menu()
+        self.build_assign_tag_menu()
 
     def build_tag_menu(self):
         taglist = tags.get_all_tags()
-
         self.tag_box.foreach(lambda x: x.destroy())
         try:
             taglist.remove(tags.NULL)
@@ -175,9 +183,47 @@ class MainAppGTK:
             self.tag_box.add(box)
         self.tag_box.show_all()
 
+    def image_tag_checkbox_switched(self, widget, tag):
+        if widget.get_active():
+            tags.assign_tag(self.selected_picture, tag)
+        else:
+            tags.remove_tag(self.selected_picture, tag)
+
+    def build_assign_tag_menu(self):
+        taglist = tags.get_all_tags()
+        self.image_tag_box.foreach(lambda x: x.destroy())
+        try:
+            taglist.remove(tags.NULL)
+        except ValueError:
+            pass
+        textbox = gtk.Entry()
+        textbox.connect('activate', self.add_new_tag)
+        self.image_tag_box.add(textbox)
+        null_checkbox = gtk.CheckButton.new_with_label(tags.NULL)
+        null_checkbox.connect('toggled', self.image_tag_checkbox_switched, tags.NULL)
+        self.image_tag_box.add(null_checkbox)
+        taglist_activate = tags.get_tags_of_picture(self.selected_picture)
+        if tags.NULL in taglist_activate:
+            null_checkbox.set_active(True)
+        for tag in sorted(taglist):
+            checkbox = gtk.CheckButton.new_with_label(tag)
+            checkbox.connect('toggled', self.image_tag_checkbox_switched, tag)
+            checkbox.set_active(tag in taglist_activate)
+            box = gtk.Box(gtk.Orientation.HORIZONTAL, 0)
+            box.add(checkbox)
+            del_button = gtk.Button.new_from_icon_name('gtk-remove', gtk.IconSize.BUTTON)
+            del_button.connect('clicked', self.tag_remove_click, tag)
+            box.add(del_button)
+            self.image_tag_box.add(box)
+        self.image_tag_box.show_all()
+
     def open_tag_popover(self, widget):
         self.build_tag_menu()
-        self.tag_popover.show()
+        self.tag_popover.popup()
+
+    def open_assign_tag_popover(self, widget):
+        self.build_assign_tag_menu()
+        self.image_tag_popover.popup()
 
 
 if __name__ == "__main__":
