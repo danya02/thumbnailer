@@ -56,6 +56,29 @@ def new_picture(name):
             Mapping.create(picture=pic, tag=null_tag)
         return pic
 
+def add_many_pictures(list, callback):
+    list=list[:]
+    c=0
+    m=len(list)*2
+    callback(c,m)
+    if Picture.select().count==len(list):
+        return
+    for i in Picture.select():
+        c+=1
+        callback(c, m)
+        if i.name in list:
+            list.remove(i.name)
+    c=m//2
+    callback(c,m)
+    null_tag, _ = Tag.get_or_create(name=NULL)
+    with db.atomic():
+        for i in list:
+            pic=Picture.create(name=i)
+            Mapping.create(picture=pic,tag=null_tag)
+            callback(c,m)
+            c+=1
+
+
 
 def assign_tag(pic_name, tag_name):
     with db.atomic():
