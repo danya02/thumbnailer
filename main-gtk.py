@@ -3,6 +3,7 @@
 
 import gi
 
+import abstract
 import filesystem
 import spritesheet_manager
 
@@ -35,12 +36,16 @@ def surface_to_pixbuf(surface):
     return pixbuf
 
 
-class PixbufLoader:
+class PixbufLoader(metaclass=abstract.Singleton):
     def __init__(self, fs):
         self.fs = fs
         self.spritesheet_manager = spritesheet_manager.SpritesheetManager('', fs)
         self.cache = {}
         self.maxsize = (100, 100)
+
+    def clear_cache(self):
+        self.cache.clear()
+        self.spritesheet_manager.clear_cache()
 
     def __getitem__(self, item):
         if item in self.cache:
@@ -81,9 +86,11 @@ class MainAppGTK:
         self.builder.get_object('MainWindow').connect('destroy', self.shutdown)
         self.builder.get_object('ButtonPrev').connect('clicked', self.prev)
         self.builder.get_object('ButtonNext').connect('clicked', self.next)
+
+        self.builder.get_object('ClearCache').connect('clicked', self.purge_cache)
         self.page = 0
         self.items_on_page = 100
-        self.filesystem = filesystem.LocalFilesystem('/home/danya/Pictures/', 0.01)
+        self.filesystem = filesystem.LocalFilesystem('/home/danya/Pictures/', 0.0)
         self.pbloader = PixbufLoader(self.filesystem)
         self.file_list = None
         self.load_file_list()
@@ -104,6 +111,14 @@ class MainAppGTK:
         except:
             pass
         gtk.main_quit(arg)
+
+    def ask_ok_cancel(self, message: str, secondary: str) -> bool:
+        dialog = gtk.MessageDialog(self.builder.get_object('MainWindow'), 0, gtk.MessageType.WARNING,
+                                   gtk.ButtonsType.OK_CANCEL, message)
+        dialog.format_secondary_text(secondary)
+        response = dialog.run()
+        dialog.destroy()
+        return response == gtk.ResponseType.OK
 
     def prev(self, widget):
         self.page = max(0, self.page - 1)
@@ -194,7 +209,7 @@ class MainAppGTK:
                 return
             n += 1
             gn += 1
-            self.update_status(f'Loading preview {gn}/{len(self.file_list)}', True)
+            self.update_status(f'Loading preview {gn}/{len(select)}', True)
             if n > self.items_on_page:
                 n = 0
                 self.len_models += 1
@@ -217,6 +232,8 @@ class MainAppGTK:
     def tag_remove_click(self, widget, tag):
         l.info('Destroying tag ' + tag)
         tags.destroy_tag(tag)
+        if tag in self.tags_selected:
+            self.tags_selected.remove(tag)
         self.build_tag_menu()
         self.build_assign_tag_menu()
 
@@ -252,6 +269,16 @@ class MainAppGTK:
             box.add(del_button)
             self.tag_box.add(box)
         self.tag_box.show_all()
+
+    def purge_cache(self, widget):
+        if self.ask_ok_cancel('Really clear the thumbnail cache?', 'This will require all thumbnails to be recreated, '
+                                                                   'which may take significant time. Only do this if '
+                                                                   'many pictures show up in thumbnail view as black '
+                                                                   'rectangles.'):
+            for i in os.listdir('spritesheets'):
+                os.remove(f'spritesheets/{i}')
+        self.pbloader.clear_cache()
+        self.rebuild_models()
 
     def image_tag_checkbox_switched(self, widget, tag):
         if widget.get_active():

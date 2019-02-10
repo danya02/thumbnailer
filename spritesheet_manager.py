@@ -141,6 +141,12 @@ class SpritesheetManager(metaclass=abstract.Singleton):
         self.cache = {}
         self.packer = Packer()
 
+    def clear_cache(self):
+        self.cache.clear()
+        self.ssl.cache.clear()
+        db.drop_tables([Thumbnail, ThumbnailScale, Picture, Spritesheet])
+        db.create_tables([Thumbnail, ThumbnailScale, Picture, Spritesheet])
+
     def get_thumbnail(self, name, size: (int, int)) -> pygame.Surface:
         xsep = 'x'.join([str(i) for i in size])
         thumbnail_scale, _ = ThumbnailScale.get_or_create(width=size[0], height=size[1])
